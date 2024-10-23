@@ -113,7 +113,7 @@ class ROI(pgROI):
         return pg.Point(self.pos() + rotate2D(point =(self.width()/2,self.height()/2), angle=np.deg2rad(self.angle())))
 
     def set_center(self, center: Union[pg.Point, Tuple[float, float]]):
-        self.setPos(center - rotate2D(self.width()/2,self.height()/2,np.deg2rad(self.angle())))
+        self.setPos(center - rotate2D(point =(self.width()/2,self.height()/2), angle=np.deg2rad(self.angle())))
 
     def set_positions(self):
         mapper = ROIPositionMapper(self.pos(), self.size())
@@ -413,10 +413,6 @@ class ROIManager(QObject):
         self._ROIs: OrderedDict[str, ROI] = OrderedDict([])
         self.setupUI()
 
-    @staticmethod
-    def roi_format(index):
-        return f'{ROI_NAME_PREFIX}{index:02d}'
-
     @property
     def ROIs(self):
         return self._ROIs
@@ -425,10 +421,10 @@ class ROIManager(QObject):
         return len(self._ROIs)
 
     def get_roi_from_index(self, index: int) -> ROI:
-        return self.ROIs[self.roi_format(index)]
+        return self.ROIs[roi_format(index)]
 
     def _set_roi_from_index(self, index: int, roi):
-        self.ROIs[self.roi_format(index)] = roi
+        self.ROIs[roi_format(index)] = roi
 
     def get_roi(self, roi_key):
         if roi_key in self.ROIs:
@@ -443,7 +439,7 @@ class ROIManager(QObject):
         self.settings.child('ROIs').addNew(roitype)
 
     def remove_roi_programmatically(self, index: int):
-        self.settings.child('ROIs').removeChild(self.settings.child('ROIs', self.roi_format(index)))
+        self.settings.child('ROIs').removeChild(self.settings.child('ROIs', roi_format(index)))
 
     def setupUI(self):
 
@@ -510,41 +506,22 @@ class ROIManager(QObject):
                     height = np.max(((yrange[1] - yrange[0]) / 10, 2))
                     pos = [int(np.mean(xrange) - width / 2), int(np.mean(yrange) - width / 2)]
 
-                    if roi_type == 'RectROI':
-                        newroi = RectROI(index=newindex, pos=pos,
-                                         size=[width, height], name=par.name())
-                    elif roi_type == 'EllipseROI':
-                        newroi = EllipseROI(index=newindex, pos=pos,
-                                            size=[width, height], name=par.name())
-                    elif roi_type == 'CircularROI':
-                        newroi = CircularROI(index=newindex, pos=pos,
-                                             size=[width, height], name=par.name())
-                    newroi.setPen(par['Color'])
+                    roi = self.makeROI2D(roi_type,index=newindex, pos=pos,size=[width, height],pen=par['Color'])
 
-                newroi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
-                newroi.sigRegionChangeFinished.connect(self.update_roi_tree)
-                # newroi.index_signal[int].connect(self.update_roi_tree)
-                # try:
-                #     self.settings.sigTreeStateChanged.disconnect()
-                # except Exception:
-                #     pass
-                # self.settings.sigTreeStateChanged.connect(self.roi_tree_changed)
-                self.viewer_widget.plotItem.addItem(newroi)
 
-                self._set_roi_from_index(newindex, newroi)
+                roi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
+                roi.sigRegionChangeFinished.connect(self.update_roi_tree)
 
                 self.new_ROI_signal.emit(newindex, roi_type, par.name())
-                self.update_roi_tree(newroi)
                 self.emit_colors()
                 self.roi_changed.emit()
 
             elif change == 'value':
                 if param.name() in putils.iter_children(self.settings.child('ROIs'), []):
                     parent_name = putils.get_param_path(param)[putils.get_param_path(param).index('ROIs')+1]
-                    if path[1] in self._ROIs.keys():
-                        roi_changed = self._ROIs[path[1]]                                    
+                    if parent_name in self._ROIs.keys():
+                        roi_changed = self._ROIs[parent_name]                                    
                         self.update_roi(roi_changed, param)
-                    # self.update_roi(parent_name, param)
                     self.roi_value_changed.emit(parent_name, (param, param.value()))
                 if param.name() == 'Color':
                     self.emit_colors()
@@ -552,6 +529,23 @@ class ROIManager(QObject):
             elif change == 'parent':
                 if 'ROI' in param.name():
                     self.removeROI(self.ROIs[param.name()])
+
+    def makeROI2D(self,roi_type,index,pos,size,*args,**kwargs):
+        if roi_type == 'RectROI':
+            roi = RectROI(index=index, pos=pos,
+                                size=size, name=roi_format(index),*args,**kwargs)
+        elif roi_type == 'EllipseROI':
+            roi = EllipseROI(index=index, pos=pos,
+                                size=size, name=roi_format(index),*args,**kwargs)
+        elif roi_type == 'CircularROI':
+            roi = CircularROI(index=index, pos=pos,
+                                    size=size, name=roi_format(index),*args,**kwargs)
+
+        self.ROIs[roi.key()]=roi
+        self.viewer_widget.addItem(roi)
+        self.update_roi_tree(roi)
+        return roi
+    
 
     def removeROI(self,roi):
         roi_group = self.settings.child('ROIs')
@@ -569,38 +563,47 @@ class ROIManager(QObject):
     def update_use_channel(self, channels: List[str]):
         channels.append('All')
         for ind in range(len(self)):
-            val = self.settings['ROIs', self.roi_format(ind), 'use_channel']
-            self.settings.child('ROIs', self.roi_format(ind), 'use_channel').setLimits(channels)
+            val = self.settings['ROIs', roi_format(ind), 'use_channel']
+            self.settings.child('ROIs', roi_format(ind), 'use_channel').setLimits(channels)
             if val not in channels:
-                self.settings.child('ROIs', self.roi_format(ind), 'use_channel').setValue(channels[0])
+                self.settings.child('ROIs', roi_format(ind), 'use_channel').setValue(channels[0])
 
     def update_roi(self, roi:ROI, param):
+
         roi.signalBlocker.reblock()
         parent_name = param.parent().opts['name']
-        if param.name() == 'Color':
-            roi.setPen(param.value())
-            self.emit_colors()
-        elif parent_name == 'center':
-            center = roi.center()
-            pos = self.update_roi_pos(center,param)
-            if self.ROI_type =='1D':
-                pos.sort()
-            else:
-                roi.set_center(pos)
-        elif parent_name == 'position':
-            position = roi.pos()
-            pos = self.update_roi_pos(position,param)
-            if self.ROI_type =='1D':
-                pos.sort()
-            roi.setPos(pos)          
-        elif param.name() == 'angle':
-            roi.setAngle(param.value(),center=[0.5,0.5])
-        elif param.name() == 'width':
-            size = roi.size()
-            roi.setSize((param.value(), size[1]))
-        elif param.name() == 'height':
-            size = roi.size()
-            roi.setSize((size[0], param.value()))
+        if param.name() == 'roi_type':
+            state = roi.saveState()
+            self.viewer_widget.removeItem(roi)            
+            if self.ROI_type =='2D':
+                roi = self.makeROI2D(roi_type=param.value(),index=roi.index,pos=state['pos'],size=state['size'],angle=state['angle'],pen=roi.pen)    
+        else:        
+            if param.name() == 'Color':
+                roi.setPen(param.value())
+                self.emit_colors()
+            elif parent_name == 'center':
+                center = roi.center()
+                pos = self.update_roi_pos(center,param)
+                if self.ROI_type =='1D':
+                    pos.sort()
+                else:
+                    roi.set_center(pos)
+            elif parent_name == 'position':
+                position = roi.pos()
+                pos = self.update_roi_pos(position,param)
+                if self.ROI_type =='1D':
+                    pos.sort()
+                roi.setPos(pos)          
+            elif param.name() == 'angle':
+                roi.setAngle(param.value(),center=[0.5,0.5])
+            elif param.name() == 'zlevel':
+                roi.setZValue(param.value())
+            elif param.name() == 'width':
+                size = roi.size()
+                roi.setSize((param.value(), size[1]))
+            elif param.name() == 'height':
+                size = roi.size()
+                roi.setSize((size[0], param.value()))
         roi.signalBlocker.unblock()
 
     def update_roi_pos(self,pos,param):
@@ -623,7 +626,6 @@ class ROIManager(QObject):
             Zvalue = roi.zValue()
 
         self.settings_signalBlocker.reblock()
-
         if isinstance(roi, LinearROI):
             par.child(*('position', 'left')).setValue(pos[0])
             par.child(*('position', 'right')).setValue(pos[1])
@@ -636,7 +638,6 @@ class ROIManager(QObject):
             par.child(*('size', 'height')).setValue(size.y())
             par.child('angle').setValue(angle)
             par.child('zlevel').setValue(Zvalue)
-
         self.settings_signalBlocker.unblock()
 
     def save_ROI(self):
@@ -654,7 +655,7 @@ class ROIManager(QObject):
     def clear_ROI(self):
         indexes = [roi.index for roi in self._ROIs.values()]
         for index in indexes:
-            self.settings.child(*('ROIs', self.roi_format(index))).remove()
+            self.settings.child(*('ROIs', roi_format(index))).remove()
             # self.settings.sigTreeStateChanged.connect(self.roi_tree_changed)
 
     def load_ROI(self, path=None, params=None):
