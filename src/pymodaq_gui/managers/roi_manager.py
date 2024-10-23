@@ -1,39 +1,40 @@
 
 import os
 import sys
-from typing import List, TYPE_CHECKING, Tuple, Union
-
-from qtpy import QtCore, QtGui, QtWidgets
-from qtpy.QtCore import QObject, Slot, Signal, QPointF
-from qtpy.QtGui import QIcon, QPixmap
 from collections import OrderedDict
-
-
-from pymodaq_gui.parameter import utils as putils
-from pymodaq_gui.parameter import ParameterTree, Parameter, ioxml, pymodaq_ptypes
-from pyqtgraph.parametertree.parameterTypes.basetypes import GroupParameter
-
-from pymodaq_gui.managers.action_manager import QAction
-
-from pyqtgraph import ROI as pgROI
-
-from pyqtgraph import functions as fn
-from pyqtgraph import LinearRegionItem as pgLinearROI
-from pymodaq_utils.utils import plot_colors
-from pymodaq_utils.logger import get_module_name, set_logger
-from pymodaq_gui.config import get_set_roi_path
-from pymodaq_gui.utils import select_file
-from pymodaq_gui.plotting.utils import plot_utils
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Tuple, Union
 
 import numpy as np
-from pathlib import Path
+import pyqtgraph as pg
 from pymodaq_data.post_treatment.process_to_scalar import DataProcessorFactory
+from pymodaq_utils.logger import get_module_name, set_logger
+from pymodaq_utils.math_utils import rotate2D
+from pymodaq_utils.utils import plot_colors
+from pyqtgraph import ROI as pgROI
+from pyqtgraph import LinearRegionItem as pgLinearROI
+from pyqtgraph import functions as fn
+from pyqtgraph.parametertree.parameterTypes.basetypes import GroupParameter
+from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtCore import QObject, Signal, Slot
+from qtpy.QtGui import QIcon, QPixmap
+
+from pymodaq_gui.config import get_set_roi_path
+from pymodaq_gui.managers.action_manager import QAction
+from pymodaq_gui.parameter import (Parameter, ParameterTree, ioxml,
+                                   pymodaq_ptypes)
+from pymodaq_gui.parameter import utils as putils
+from pymodaq_gui.plotting.utils import plot_utils
+from pymodaq_gui.utils import select_file
 
 data_processors = DataProcessorFactory()
 
 roi_path = get_set_roi_path()
 logger = set_logger(get_module_name(__file__))
 
+
+def roi_format(index):
+    return f'{ROI_NAME_PREFIX}{index:02d}'
 
 class ROIPositionMapper(QtWidgets.QWidget):
     """ Widget presenting a Tree structure representing a ROI positions.
@@ -103,13 +104,12 @@ class ROI(pgROI):
     def color(self):
         return self.pen.color()
 
-    def center(self) -> QPointF:
+    def center(self) -> pg.Point:
         """ Get the center position of the ROI """
-        return QPointF(self.pos().x() + self.size().x() / 2, self.pos().y() + self.size().y() / 2)
+        return pg.Point(self.pos() + rotate2D(point =(self.width()/2,self.height()/2), angle=np.deg2rad(self.angle())))
 
-    def set_center(self, center: Union[QPointF, Tuple[float, float]]):
-        size = self.size()
-        self.setPos(np.array(center) - np.array(size) / 2)
+    def set_center(self, center: Union[pg.Point, Tuple[float, float]]):
+        self.setPos(center - rotate2D(self.width()/2,self.height()/2,np.deg2rad(self.angle())))
 
     def set_positions(self):
         mapper = ROIPositionMapper(self.pos(), self.size())
@@ -133,6 +133,12 @@ class ROI(pgROI):
     def height(self) -> float:
         return self.size().y()
 
+    def key(self,):
+        return roi_format(self.index)
+    
+    def type(self)-> str:
+        return type(self).__name__    
+    
 
 class ROIBrushable(ROI):
     def __init__(self, brush=None, *args, **kwargs):
@@ -170,7 +176,6 @@ class LinearROI(pgLinearROI):
         super().__init__(values=pos, **kwargs)
         self.name = name
         self.index = index
-        self.sigRegionChangeFinished.connect(self.emit_index_signal)
 
         self._menu = QtWidgets.QMenu()
         self._menu.addAction('Copy ROI to clipboard', self.copy_clipboard)
@@ -745,8 +750,9 @@ class ROISaver:
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    from pymodaq_gui.plotting.widgets import ImageWidget
     from pyqtgraph import PlotWidget
+
+    from pymodaq_gui.plotting.widgets import ImageWidget
 
     im = ImageWidget()
     im = PlotWidget()
