@@ -530,16 +530,16 @@ class ROIManager(QObject):
                 if 'ROI' in param.name():
                     self.removeROI(self.ROIs[param.name()])
 
-    def makeROI2D(self,roi_type,index,pos,size,*args,**kwargs):
+    def makeROI2D(self,roi_type,index,pos,size,**kwargs):
         if roi_type == 'RectROI':
             roi = RectROI(index=index, pos=pos,
-                                size=size, name=roi_format(index),*args,**kwargs)
+                                size=size, name=roi_format(index),**kwargs)
         elif roi_type == 'EllipseROI':
             roi = EllipseROI(index=index, pos=pos,
-                                size=size, name=roi_format(index),*args,**kwargs)
+                                size=size, name=roi_format(index),**kwargs)
         elif roi_type == 'CircularROI':
             roi = CircularROI(index=index, pos=pos,
-                                    size=size, name=roi_format(index),*args,**kwargs)
+                                    size=size, name=roi_format(index),**kwargs)
 
         self.ROIs[roi.key()]=roi
         self.viewer_widget.addItem(roi)
@@ -806,7 +806,7 @@ if __name__ == '__main__':
 
     from pymodaq_gui.plotting.widgets import ImageWidget
 
-    im = ImageWidget()
+    # im = ImageWidget()
     im = PlotWidget()
     prog = ROIManager(im, '2D')
     widget = QtWidgets.QWidget()
