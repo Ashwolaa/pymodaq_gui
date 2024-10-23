@@ -16,7 +16,7 @@ from pyqtgraph import LinearRegionItem as pgLinearROI
 from pyqtgraph import functions as fn
 from pyqtgraph.parametertree.parameterTypes.basetypes import GroupParameter
 from qtpy import QtCore, QtGui, QtWidgets
-from qtpy.QtCore import QObject, Signal, Slot
+from qtpy.QtCore import QObject, QSignalBlocker, Signal, Slot
 from qtpy.QtGui import QIcon, QPixmap
 
 from pymodaq_gui.config import get_set_roi_path
@@ -33,6 +33,7 @@ roi_path = get_set_roi_path()
 logger = set_logger(get_module_name(__file__))
 
 
+ROI_NAME_PREFIX = 'ROI_'
 def roi_format(index):
     return f'{ROI_NAME_PREFIX}{index:02d}'
 
@@ -91,14 +92,17 @@ class ROI(pgROI):
         super().__init__(*args, **kwargs)
         self.name = name
         self.index = index
+        self.signalBlocker = QSignalBlocker(self)
+        self.signalBlocker.unblock()
         self._menu = QtWidgets.QMenu()
         self._menu.addAction('Set ROI positions', self.set_positions)
         self._menu.addAction('Copy ROI to clipboard', self.copy_clipboard)
-        self.sigRegionChangeFinished.connect(self.emit_index_signal)
+        # self.sigRegionChangeFinished.connect(self.emit_index_signal)
         self._clipboard = QtGui.QGuiApplication.clipboard()
 
     def emit_index_signal(self):
         self.index_signal.emit(self.index)
+
 
     @property
     def color(self):
@@ -176,10 +180,11 @@ class LinearROI(pgLinearROI):
         super().__init__(values=pos, **kwargs)
         self.name = name
         self.index = index
+        self.signalBlocker = QSignalBlocker(self.sigRegionChanged)
 
         self._menu = QtWidgets.QMenu()
         self._menu.addAction('Copy ROI to clipboard', self.copy_clipboard)
-        self.sigRegionChangeFinished.connect(self.emit_index_signal)
+        # self.sigRegionChangeFinished.connect(self.emit_index_signal)
         self._clipboard = QtGui.QGuiApplication.clipboard()
 
     def copy_clipboard(self):
@@ -309,9 +314,7 @@ class RectROI(ROI):
         self.addRotateHandle([0, 0], [0.5, 0.5])
 
 
-ROI_NAME_PREFIX = 'ROI_'
 ROI2D_TYPES = ['RectROI', 'EllipseROI', 'CircularROI']
-
 
 class ROIScalableGroup(GroupParameter):
     def __init__(self, roi_type='1D', **opts):
@@ -319,8 +322,7 @@ class ROIScalableGroup(GroupParameter):
         opts['addText'] = "Add"
         self.roi_type = roi_type
         if roi_type != '1D':
-            opts['addList'] = ROI2D_TYPES
-        self.color_list = ROIManager.color_list
+            opts['addList'] = ROI2D_TYPES        
         super().__init__(**opts)
 
     def addNew(self, typ=''):
@@ -331,45 +333,68 @@ class ROIScalableGroup(GroupParameter):
         else:
             newindex = max(child_indexes) + 1
 
-        child = {'name': ROIManager.roi_format(newindex), 'type': 'group', 'removable': True, 'renamable': False}
+        self.addChild(self.makeChild(newindex,typ))
 
-        children = [{'name': 'type', 'type': 'str', 'value': self.roi_type, 'readonly': True, 'visible': False}, ]
-        if self.roi_type == '2D':
-            children.extend([{'title': 'ROI Type', 'name': 'roi_type', 'type': 'str', 'value': typ, 'readonly': True},
-                             {'title': 'Use channel', 'name': 'use_channel', 'type': 'list',
-                              'limits': ['red', 'green', 'blue']}, ])
-            children.append({'title': 'Math type:', 'name': 'math_function', 'type': 'list',
-                             'limits': data_processors.functions_filtered('Data2D')})
-        else:
-            children.append({'title': 'Use channel', 'name': 'use_channel', 'type': 'list'})
-            children.append({'title': 'Math type:', 'name': 'math_function', 'type': 'list',
-                             'limits': data_processors.functions_filtered('Data1D')})
 
-        children.extend([
-            {'name': 'Color', 'type': 'color', 'value': list(np.roll(self.color_list, newindex)[0])}, ])
-        if self.roi_type == '2D':
-            children.extend([{'name': 'position', 'type': 'group', 'children': [
-                {'name': 'x', 'type': 'float', 'value': 0, 'step': 1},
-                {'name': 'y', 'type': 'float', 'value': 0, 'step': 1}
-            ]}, ])
+    def makeChild(self,index,roi_type):
+        child = {'name': roi_format(index), 'type': 'bool','value':True, 'removable': True, 'renamable': False, 'expanded': False,'context':['Copy',]}
+        if self.roi_type =='2D':
+            child['children'] = ROIScalableGroup.makeROIParam2D(roi_type,index)
+        elif self.roi_type =='1D':
+            child['children'] = ROIScalableGroup.makeROIParam1D(roi_type,index)
+        return child  
+
+    def makeChannelsParam(dim='2D'):
+        if dim =='2D':
+            child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect',
+                              'limits': ['red', 'green', 'blue',]},]
         else:
+            child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect'},]
+        return child 
+    @staticmethod
+    def makeDisplayParam(index):
+        return [{'name': 'Color', 'type': 'color', 'value': list(np.roll(ROIManager.color_list, index)[0])},
+             {'name': 'zlevel', 'title':'Z-level','type': 'int', 'expanded': False, 'value':10},] 
+        
+    @staticmethod
+    def makeMathParam(dim='2D'):
+        return [{'title': 'Math type:', 'name': 'math_function', 'type': 'list',
+                             'limits': data_processors.functions_filtered(f'Data{dim}')},]
+    @staticmethod    
+    def makeROIParam2D(roi_type,index):
+            children = []    
+            children.extend([{'title': 'Type', 'name': 'roi_type', 'type': 'list', 'value': roi_type, 'limits':['RectROI','EllipseROI','CircularROI'], 'readonly': False,}])
+            children.extend(ROIScalableGroup.makeChannelsParam('2D'))
+            children.extend(ROIScalableGroup.makeMathParam('2D'))
+            children.extend(ROIScalableGroup.makeDisplayParam(index))
+            children.extend([{'name': 'center', 'type': 'group', 'expanded': False, 'children': [
+                    {'name': 'x', 'type': 'float', 'value': 0, 'step': 1,'decimals':6},
+                    {'name': 'y', 'type': 'float', 'value': 0, 'step': 1,'decimals':6}
+                ]}, ])                
+            children.extend([{'name': 'position', 'type': 'group', 'expanded': False, 'children': [
+                    {'name': 'x', 'type': 'float', 'value': 0, 'step': 1,'decimals':6},
+                    {'name': 'y', 'type': 'float', 'value': 0, 'step': 1,'decimals':6}
+                ]}, ])          
+            children.extend([
+                    {'name': 'size', 'type': 'group', 'expanded': False, 'children': [
+                        {'name': 'width', 'type': 'float', 'value': 10, 'step': 1,'decimals':6},
+                        {'name': 'height', 'type': 'float', 'value': 10, 'step': 1,'decimals':6}
+                    ]},
+                    {'name': 'angle', 'type': 'float', 'value': 0, 'step': 1}])    
+            return children
+
+    @staticmethod    
+    def makeROIParam1D(roi_type,index):
+            children = []    
+            children.extend(ROIScalableGroup.makeChannelsParam('1D'))
+            children.extend(ROIScalableGroup.makeMathParam('1D'))
+            children.extend(ROIScalableGroup.makeDisplayParam(index))
             children.extend([{'name': 'position', 'type': 'group', 'children': [
                 {'name': 'left', 'type': 'float', 'value': 0, 'step': 1},
                 {'name': 'right', 'type': 'float', 'value': 10, 'step': 1}
-            ]}, ])
-        if self.roi_type == '2D':
-            children.extend([
-                {'name': 'size', 'type': 'group', 'children': [
-                    {'name': 'width', 'type': 'float', 'value': 10, 'step': 1},
-                    {'name': 'height', 'type': 'float', 'value': 10, 'step': 1}
-                ]},
-                {'name': 'angle', 'type': 'float', 'value': 0, 'step': 1}])
-
-        child['children'] = children
-
-        self.addChild(child)
-
-
+                    ]}, ])
+            
+            return children
 class ROIManager(QObject):
 
     new_ROI_signal = Signal(int, str, str)
@@ -446,10 +471,14 @@ class ROIManager(QObject):
         self.settings = Parameter.create(title='ROIs Settings', name='rois_settings', type='group', children=params)
         self.roitree.setParameters(self.settings, showTop=False)
         self.settings.sigTreeStateChanged.connect(self.roi_tree_changed)
-
+        self.settings_signalBlocker = QSignalBlocker(self.settings)
+        self.settings_signalBlocker.unblock()
         self.save_ROI_pb.triggered.connect(self.save_ROI)
         self.load_ROI_pb.triggered.connect(lambda: self.load_ROI(None))
         self.clear_ROI_pb.triggered.connect(self.clear_ROI)
+
+    def getIndexes(self,):
+        return [roi.index for roi in self.ROIs.values()]
 
     def roi_tree_changed(self, param, changes):
 
@@ -463,10 +492,10 @@ class ROIManager(QObject):
                 par: Parameter = data[0]
                 newindex = int(par.name()[-2:])
                 roi_type = ''
-                if par.child('type').value() == '1D':
+                pos = self.viewer_widget.plotItem.vb.viewRange()
+                if self.ROI_type == '1D':
                     roi_type = ''
-
-                    pos = self.viewer_widget.plotItem.vb.viewRange()[0]
+                    pos = pos[0]
                     pos = pos[0] + np.diff(pos)*np.array([2,4])/6
                     newroi = LinearROI(index=newindex, pos=pos)
 
@@ -474,10 +503,9 @@ class ROIManager(QObject):
                     newroi.setBrush(par.child('Color').value())
                     newroi.setOpacity(0.2)
 
-                elif par.child('type').value() == '2D':
+                elif self.ROI_type == '2D':
                     roi_type = par.child('roi_type').value()
-                    xrange = self.viewer_widget.plotItem.vb.viewRange()[0]
-                    yrange = self.viewer_widget.plotItem.vb.viewRange()[1]
+                    xrange,yrange=pos                    
                     width = np.max(((xrange[1] - xrange[0]) / 10, 2))
                     height = np.max(((yrange[1] - yrange[0]) / 10, 2))
                     pos = [int(np.mean(xrange) - width / 2), int(np.mean(yrange) - width / 2)]
@@ -494,35 +522,49 @@ class ROIManager(QObject):
                     newroi.setPen(par['Color'])
 
                 newroi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
-                newroi.index_signal[int].connect(self.update_roi_tree)
-                try:
-                    self.settings.sigTreeStateChanged.disconnect()
-                except Exception:
-                    pass
-                self.settings.sigTreeStateChanged.connect(self.roi_tree_changed)
+                newroi.sigRegionChangeFinished.connect(self.update_roi_tree)
+                # newroi.index_signal[int].connect(self.update_roi_tree)
+                # try:
+                #     self.settings.sigTreeStateChanged.disconnect()
+                # except Exception:
+                #     pass
+                # self.settings.sigTreeStateChanged.connect(self.roi_tree_changed)
                 self.viewer_widget.plotItem.addItem(newroi)
 
                 self._set_roi_from_index(newindex, newroi)
 
                 self.new_ROI_signal.emit(newindex, roi_type, par.name())
-                self.update_roi_tree(newindex)
+                self.update_roi_tree(newroi)
                 self.emit_colors()
                 self.roi_changed.emit()
 
             elif change == 'value':
                 if param.name() in putils.iter_children(self.settings.child('ROIs'), []):
                     parent_name = putils.get_param_path(param)[putils.get_param_path(param).index('ROIs')+1]
-                    self.update_roi(parent_name, param)
+                    if path[1] in self._ROIs.keys():
+                        roi_changed = self._ROIs[path[1]]                                    
+                        self.update_roi(roi_changed, param)
+                    # self.update_roi(parent_name, param)
                     self.roi_value_changed.emit(parent_name, (param, param.value()))
                 if param.name() == 'Color':
                     self.emit_colors()
 
             elif change == 'parent':
                 if 'ROI' in param.name():
-                    roi = self._ROIs.pop(param.name())
-                    self.viewer_widget.plotItem.removeItem(roi)
-                    self.remove_ROI_signal.emit(param.name())
-                    self.emit_colors()
+                    self.removeROI(self.ROIs[param.name()])
+
+    def removeROI(self,roi):
+        roi_group = self.settings.child('ROIs')
+        for param in roi_group.children():                
+                if roi.key() == param.name():
+                    self.settings_signalBlocker.reblock()
+                    self.settings.sigTreeStateChanged.disconnect()
+                    roi_group.removeChild(param)
+                    self.settings_signalBlocker.unblock()
+        roi = self.ROIs.pop(roi.key())
+        self.viewer_widget.removeItem(roi)
+        self.remove_ROI_signal.emit(roi.key())
+        self.emit_colors()
 
     def update_use_channel(self, channels: List[str]):
         channels.append('All')
@@ -532,61 +574,70 @@ class ROIManager(QObject):
             if val not in channels:
                 self.settings.child('ROIs', self.roi_format(ind), 'use_channel').setValue(channels[0])
 
-    def update_roi(self, roi_key, param):
-        self._ROIs[roi_key].index_signal[int].disconnect()
+    def update_roi(self, roi:ROI, param):
+        roi.signalBlocker.reblock()
+        parent_name = param.parent().opts['name']
         if param.name() == 'Color':
-            self._ROIs[roi_key].setPen(param.value())
+            roi.setPen(param.value())
             self.emit_colors()
-        elif param.name() == 'left' or param.name() == 'x':
-            pos = self._ROIs[roi_key].pos()
-            poss = [param.value(), pos[1]]
-            if self.settings.child('ROIs', roi_key, 'type').value() == '1D':
-                poss.sort()
-            self._ROIs[roi_key].setPos(poss)
-
-        elif param.name() == 'right' or param.name() == 'y':
-            pos = self._ROIs[roi_key].pos()
-            poss = [pos[0], param.value()]
-            if self.settings.child('ROIs', roi_key, 'type').value() == '1D':
-                poss.sort()
-            self._ROIs[roi_key].setPos(poss)
-
+        elif parent_name == 'center':
+            center = roi.center()
+            pos = self.update_roi_pos(center,param)
+            if self.ROI_type =='1D':
+                pos.sort()
+            else:
+                roi.set_center(pos)
+        elif parent_name == 'position':
+            position = roi.pos()
+            pos = self.update_roi_pos(position,param)
+            if self.ROI_type =='1D':
+                pos.sort()
+            roi.setPos(pos)          
         elif param.name() == 'angle':
-            self._ROIs[roi_key].setAngle(param.value(),center=[0.5,0.5])
+            roi.setAngle(param.value(),center=[0.5,0.5])
         elif param.name() == 'width':
-            size = self._ROIs[roi_key].size()
-            self._ROIs[roi_key].setSize((param.value(), size[1]))
+            size = roi.size()
+            roi.setSize((param.value(), size[1]))
         elif param.name() == 'height':
-            size = self._ROIs[roi_key].size()
-            self._ROIs[roi_key].setSize((size[0], param.value()))
-        self._ROIs[roi_key].index_signal[int].connect(self.update_roi_tree)
+            size = roi.size()
+            roi.setSize((size[0], param.value()))
+        roi.signalBlocker.unblock()
 
-    @Slot(int)
-    def update_roi_tree(self, index):
-        roi = self.get_roi_from_index(index)
-        par = self.settings.child(*('ROIs', self.roi_format(index)))
+    def update_roi_pos(self,pos,param):
+        if param.name() == 'x' or param.name() == 'left':
+            poss = pg.Point(param.value(), pos.y())
+        elif param.name() == 'y' or param.name() == 'right':         
+            poss = pg.Point(pos.x(), param.value())                   
+        return poss
+    @Slot()
+    def update_roi_tree(self, roi):
+
+        par = self.settings.child(*('ROIs', roi.key()))
         if isinstance(roi, LinearROI):
             pos = roi.getRegion()
         else:
             pos = roi.pos()
             size = roi.size()
             angle = roi.angle()
+            center = roi.center()
+            Zvalue = roi.zValue()
 
-        try:
-            self.settings.sigTreeStateChanged.disconnect()
-        except Exception:
-            pass
+        self.settings_signalBlocker.reblock()
+
         if isinstance(roi, LinearROI):
             par.child(*('position', 'left')).setValue(pos[0])
             par.child(*('position', 'right')).setValue(pos[1])
         if not isinstance(roi, LinearROI):
-            par.child(*('position', 'x')).setValue(pos[0])
-            par.child(*('position', 'y')).setValue(pos[1])
-            par.child(*('size', 'width')).setValue(size[0])
-            par.child(*('size', 'height')).setValue(size[1])
+            par.child(*('position', 'x')).setValue(pos.x())
+            par.child(*('position', 'y')).setValue(pos.y())
+            par.child(*('center', 'x')).setValue(center.x())
+            par.child(*('center', 'y')).setValue(center.y())        
+            par.child(*('size', 'width')).setValue(size.x())
+            par.child(*('size', 'height')).setValue(size.y())
             par.child('angle').setValue(angle)
+            par.child('zlevel').setValue(Zvalue)
 
-        self.settings.sigTreeStateChanged.connect(self.roi_tree_changed)
+        self.settings_signalBlocker.unblock()
 
     def save_ROI(self):
 
