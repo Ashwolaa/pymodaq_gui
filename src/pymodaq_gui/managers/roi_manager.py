@@ -346,8 +346,10 @@ class ROIScalableGroup(GroupParameter):
 
     def makeChannelsParam(dim='2D'):
         if dim =='2D':
-            child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect',
-                              'limits': ['red', 'green', 'blue',]},]
+            child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect', 'checkbox': True,
+                      'value': dict(all_items=['red', 'green', 'blue'],
+                           selected=['red',]),
+                              },]
         else:
             child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect'},]
         return child 
@@ -542,7 +544,7 @@ class ROIManager(QObject):
                                     size=size, name=roi_format(index),**kwargs)
 
         self.ROIs[roi.key()]=roi
-        self.viewer_widget.addItem(roi)
+        self.viewer_widget.plotItem.addItem(roi)
         self.update_roi_tree(roi)
         return roi
     
@@ -552,58 +554,55 @@ class ROIManager(QObject):
         for param in roi_group.children():                
                 if roi.key() == param.name():
                     self.settings_signalBlocker.reblock()
-                    self.settings.sigTreeStateChanged.disconnect()
                     roi_group.removeChild(param)
                     self.settings_signalBlocker.unblock()
         roi = self.ROIs.pop(roi.key())
-        self.viewer_widget.removeItem(roi)
+        self.viewer_widget.plotItem.removeItem(roi)
         self.remove_ROI_signal.emit(roi.key())
         self.emit_colors()
 
     def update_use_channel(self, channels: List[str]):
-        channels.append('All')
         for ind in range(len(self)):
-            val = self.settings['ROIs', roi_format(ind), 'use_channel']
-            self.settings.child('ROIs', roi_format(ind), 'use_channel').setLimits(channels)
-            if val not in channels:
-                self.settings.child('ROIs', roi_format(ind), 'use_channel').setValue(channels[0])
-
+            param = self.settings.child('ROIs', roi_format(ind), 'use_channel')
+            sel = param.value()['selected'] #Get selection
+            sel = [s for s in sel if s in channels] #Remove selection if channel no longer exists
+            param.setValue(dict(all_items=channels,
+                           selected=sel))
     def update_roi(self, roi:ROI, param):
 
         roi.signalBlocker.reblock()
         parent_name = param.parent().opts['name']
         if param.name() == 'roi_type':
             state = roi.saveState()
-            self.viewer_widget.removeItem(roi)            
+            self.viewer_widget.plotItem.removeItem(roi)            
             if self.ROI_type =='2D':
-                roi = self.makeROI2D(roi_type=param.value(),index=roi.index,pos=state['pos'],size=state['size'],angle=state['angle'],pen=roi.pen)    
-        else:        
-            if param.name() == 'Color':
-                roi.setPen(param.value())
-                self.emit_colors()
-            elif parent_name == 'center':
-                center = roi.center()
-                pos = self.update_roi_pos(center,param)
-                if self.ROI_type =='1D':
-                    pos.sort()
-                else:
-                    roi.set_center(pos)
-            elif parent_name == 'position':
-                position = roi.pos()
-                pos = self.update_roi_pos(position,param)
-                if self.ROI_type =='1D':
-                    pos.sort()
-                roi.setPos(pos)          
-            elif param.name() == 'angle':
-                roi.setAngle(param.value(),center=[0.5,0.5])
-            elif param.name() == 'zlevel':
-                roi.setZValue(param.value())
-            elif param.name() == 'width':
-                size = roi.size()
-                roi.setSize((param.value(), size[1]))
-            elif param.name() == 'height':
-                size = roi.size()
-                roi.setSize((size[0], param.value()))
+                roi = self.makeROI2D(roi_type=param.value(),index=roi.index,pos=state['pos'],size=state['size'],angle=state['angle'],pen=roi.pen)                
+        elif param.name() == 'Color':
+            roi.setPen(param.value())
+            self.emit_colors()
+        elif parent_name == 'center':
+            center = roi.center()
+            pos = self.update_roi_pos(center,param)
+            if self.ROI_type =='1D':
+                pos.sort()
+            else:
+                roi.set_center(pos)
+        elif parent_name == 'position':
+            position = roi.pos()
+            pos = self.update_roi_pos(position,param)
+            if self.ROI_type =='1D':
+                pos.sort()
+            roi.setPos(pos)          
+        elif param.name() == 'angle':
+            roi.setAngle(param.value(),center=[0.5,0.5])
+        elif param.name() == 'zlevel':
+            roi.setZValue(param.value())
+        elif param.name() == 'width':
+            size = roi.size()
+            roi.setSize((param.value(), size[1]))
+        elif param.name() == 'height':
+            size = roi.size()
+            roi.setSize((size[0], param.value()))
         roi.signalBlocker.unblock()
 
     def update_roi_pos(self,pos,param):
