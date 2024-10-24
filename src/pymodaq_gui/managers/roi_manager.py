@@ -424,10 +424,15 @@ class ROIManager(QObject):
         self._ROIs: OrderedDict[str, ROI] = OrderedDict([])
         self.setupUI()
 
+    @staticmethod
+    def roi_format(index):
+        logger.warning(f'ROIManager.roi_format is deprecated, use roi_format')
+        return roi_format(index)
+    
     @property
     def ROIs(self):
         return self._ROIs
-
+    
     def __len__(self):
         return len(self._ROIs)
 
@@ -557,7 +562,6 @@ class ROIManager(QObject):
         self.update_roi_tree(roi)
         return roi
     
-
     def removeROI(self,roi):
         roi_group = self.settings.child('ROIs')
         for param in roi_group.children():                
@@ -573,10 +577,8 @@ class ROIManager(QObject):
     def update_use_channel(self, channels: List[str]):
         for ind in range(len(self)):
             param = self.settings.child('ROIs', roi_format(ind), 'use_channel')
-            sel = param.value()['selected'] #Get selection
-            sel = [s for s in sel if s in channels] #Remove selection if channel no longer exists
             param.setValue(dict(all_items=channels,
-                           selected=sel))
+                           selected=channels))
     def update_roi(self, roi:ROI, param):
 
         roi.signalBlocker.reblock()

@@ -414,15 +414,15 @@ class TestROI:
         assert len(data_to_export.get_data_from_dim('data1D')) != 0
         assert len(data_to_export.get_data_from_dim('data0D')) != 0
 
-        assert f'Hlineout_{ROIManager.roi_format(index_roi)}' in data_to_export.get_names()
-        assert f'Vlineout_{ROIManager.roi_format(index_roi)}' in \
+        assert f'Hlineout_{roi_format(index_roi)}' in data_to_export.get_names()
+        assert f'Vlineout_{roi_format(index_roi)}' in \
                data_to_export.get_names('data1D')
-        assert f'Integrated_{ROIManager.roi_format(index_roi)}' in \
+        assert f'Integrated_{roi_format(index_roi)}' in \
                data_to_export.get_names('data0D')
 
-        hlineout = data_to_export.get_data_from_name(f'Hlineout_{ROIManager.roi_format(index_roi)}')
-        vlineout = data_to_export.get_data_from_name(f'Vlineout_{ROIManager.roi_format(index_roi)}')
-        intlineout = data_to_export.get_data_from_name(f'Integrated_{ROIManager.roi_format(index_roi)}')
+        hlineout = data_to_export.get_data_from_name(f'Hlineout_{roi_format(index_roi)}')
+        vlineout = data_to_export.get_data_from_name(f'Vlineout_{roi_format(index_roi)}')
+        intlineout = data_to_export.get_data_from_name(f'Integrated_{roi_format(index_roi)}')
 
         assert np.any(hlineout.data[0] == approx(np.mean(data[0], 0)))
         assert np.any(vlineout.data[0] == approx(np.mean(data[0], 1)))
@@ -445,9 +445,9 @@ class TestROI:
         assert len(data_to_export.get_data_from_dim('data1D')) != 0
         assert len(data_to_export.get_data_from_dim('data0D')) != 0
 
-        assert f'Hlineout_{ROIManager.roi_format(index_roi)}' in data_to_export.get_names('data1D')
-        assert f'Vlineout_{ROIManager.roi_format(index_roi)}' in data_to_export.get_names('data1D')
-        assert f'Integrated_{ROIManager.roi_format(index_roi)}' in data_to_export.get_names('data0D')
+        assert f'Hlineout_{roi_format(index_roi)}' in data_to_export.get_names('data1D')
+        assert f'Vlineout_{roi_format(index_roi)}' in data_to_export.get_names('data1D')
+        assert f'Integrated_{roi_format(index_roi)}' in data_to_export.get_names('data0D')
 
 
     def test_show_roi(self, init_viewer2D):
