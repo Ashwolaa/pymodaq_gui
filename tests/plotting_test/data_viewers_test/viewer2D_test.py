@@ -7,7 +7,7 @@ from pymodaq_data import data as data_mod
 from pymodaq_gui.plotting.data_viewers.viewer2D import Viewer2D
 from pymodaq_gui.plotting.data_viewers import viewer2D as v2d
 
-from pymodaq_gui.managers.roi_manager import ROIManager
+from pymodaq_gui.managers.roi_manager import ROIManager,roi_format
 import pymodaq_gui.plotting.utils.plot_utils as plot_utils
 from pathlib import Path
 import pytest
@@ -391,7 +391,7 @@ class TestROI:
 
         index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='RectROI')
 
-        prog.view.roi_manager.settings.child('ROIs', ROIManager.roi_format(index_roi), 'Color').setValue('b')
+        prog.view.roi_manager.settings.child('ROIs', roi_format(index_roi), 'Color').setValue('b')
         roi = prog.view.roi_manager.get_roi_from_index(index_roi)
         QtWidgets.QApplication.processEvents()
         assert roi.pen == mkPen('b')
