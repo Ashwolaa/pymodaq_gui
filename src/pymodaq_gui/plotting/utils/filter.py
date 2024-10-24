@@ -327,7 +327,7 @@ class Filter2DFromRois(Filter):
                                                                 self._roi_settings['ROIs',
                                                                 roi_key, 'math_function'])
 
-                    dte.append(dte_temp)
+                        dte.append(dte_temp)
             except Exception as e:
                 logger.warning(f'Issue with the ROI: {str(e)}')
         return dte
