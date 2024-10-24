@@ -220,6 +220,9 @@ class LinearROI(pgLinearROI):
     def emit_index_signal(self):
         self.index_signal.emit(self.index)
 
+    def key(self,):
+        return roi_format(self.index)
+    
     def doShow(self,status,):
         if status:
             self.show()
@@ -509,12 +512,7 @@ class ROIManager(QObject):
                     roi_type = ''
                     pos = pos[0]
                     pos = pos[0] + np.diff(pos)*np.array([2,4])/6
-                    newroi = LinearROI(index=newindex, pos=pos)
-
-                    newroi.setZValue(-10)
-                    newroi.setBrush(par.child('Color').value())
-                    newroi.setOpacity(0.2)
-
+                    roi = self.makeROI1D(newindex,pos,brush=par['Color'])
                 elif self.ROI_type == '2D':
                     roi_type = par.child('roi_type').value()
                     xrange,yrange=pos                    
@@ -523,10 +521,13 @@ class ROIManager(QObject):
                     pos = [int(np.mean(xrange) - width / 2), int(np.mean(yrange) - width / 2)]
 
                     roi = self.makeROI2D(roi_type,index=newindex, pos=pos,size=[width, height],pen=par['Color'])
-
-
+                
                 roi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
                 roi.sigRegionChangeFinished.connect(self.update_roi_tree)
+                self.update_roi_tree(roi)
+
+                self.ROIs[roi.key()]=roi
+                self.viewer_widget.plotItem.addItem(roi)                
 
                 self.new_ROI_signal.emit(newindex, roi_type, par.name())
                 self.emit_colors()
@@ -546,6 +547,12 @@ class ROIManager(QObject):
                 if 'ROI' in param.name():
                     self.removeROI(self.ROIs[param.name()])
 
+    def makeROI1D(self,index,pos,**kwargs):
+        roi = LinearROI(index=index, pos=pos,**kwargs)
+        roi.setZValue(-10)
+        roi.setOpacity(0.2)
+        return roi                    
+
     def makeROI2D(self,roi_type,index,pos,size,**kwargs):
         if roi_type == 'RectROI':
             roi = RectROI(index=index, pos=pos,
@@ -557,9 +564,6 @@ class ROIManager(QObject):
             roi = CircularROI(index=index, pos=pos,
                                     size=size, name=roi_format(index),**kwargs)
 
-        self.ROIs[roi.key()]=roi
-        self.viewer_widget.plotItem.addItem(roi)
-        self.update_roi_tree(roi)
         return roi
     
     def removeROI(self,roi):
@@ -621,9 +625,9 @@ class ROIManager(QObject):
 
     def update_roi_pos(self,pos,param):
         if param.name() == 'x' or param.name() == 'left':
-            poss = pg.Point(param.value(), pos.y())
+            poss = pg.Point(param.value(), pos[1])
         elif param.name() == 'y' or param.name() == 'right':         
-            poss = pg.Point(pos.x(), param.value())                   
+            poss = pg.Point(pos[0], param.value())                   
         return poss
     @Slot()
     def update_roi_tree(self, roi):
