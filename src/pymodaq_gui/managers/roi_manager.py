@@ -143,6 +143,11 @@ class ROI(pgROI):
     def type(self)-> str:
         return type(self).__name__    
     
+    def doShow(self,status,):
+        if status:
+            self.show()
+        else:
+            self.hide()
 
 class ROIBrushable(ROI):
     def __init__(self, brush=None, *args, **kwargs):
@@ -180,7 +185,7 @@ class LinearROI(pgLinearROI):
         super().__init__(values=pos, **kwargs)
         self.name = name
         self.index = index
-        self.signalBlocker = QSignalBlocker(self.sigRegionChanged)
+        self.signalBlocker = QSignalBlocker(self)
 
         self._menu = QtWidgets.QMenu()
         self._menu.addAction('Copy ROI to clipboard', self.copy_clipboard)
@@ -215,7 +220,11 @@ class LinearROI(pgLinearROI):
     def emit_index_signal(self):
         self.index_signal.emit(self.index)
 
-
+    def doShow(self,status,):
+        if status:
+            self.show()
+        else:
+            self.hide()
 class EllipseROI(ROI):
     """
     Elliptical ROI subclass with one scale handle and one rotation handle.
@@ -572,6 +581,9 @@ class ROIManager(QObject):
 
         roi.signalBlocker.reblock()
         parent_name = param.parent().opts['name']
+
+        if param.name() == roi.key():
+            roi.doShow(param.value())
         if param.name() == 'roi_type':
             state = roi.saveState()
             self.viewer_widget.plotItem.removeItem(roi)            
