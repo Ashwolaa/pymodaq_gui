@@ -47,14 +47,12 @@ def walk_parameters_to_xml(parent_elt=None, param=None):
 
     params_list = param.children()
     for param in params_list:
-
         opts = dict_from_param(param)
         elt = ET.Element(param.name(), **opts)
-        param_type = str(param.type())
-        if 'group' not in param_type:  # covers 'group', custom 'groupmove'...
-            add_text_to_elt(elt, param)
-        else:
+        param_type = str(param.type())        
+        if param.hasChildren():
             walk_parameters_to_xml(elt, param)
+        add_text_to_elt(elt, param)
 
         parent_elt.append(elt)
     return parent_elt
@@ -401,19 +399,18 @@ def walk_xml_to_parameter(params=[], XML_elt=None):
             param_type = el.get('type')
 
             if 'group' not in param_type:  # covers 'group', custom 'groupmove'...
-                set_txt_from_elt(el, param_dict)
+                set_txt_from_elt(el, param_dict)            
+            if param_type not in PARAM_TYPES:
+                param_dict['type'] = 'group'  # in case the custom group has been defined somewhere but not
+                # registered again in this session
+            if len(el) == 0:
+                children = []
             else:
-                if param_type not in PARAM_TYPES:
-                    param_dict['type'] = 'group'  # in case the custom group has been defined somewhere but not
-                    # registered again in this session
-                if len(el) == 0:
-                    children = []
-                else:
-                    subparams = []
-                    children = walk_xml_to_parameter(subparams, el)
-                param_dict['children'] = children
+                subparams = []
+                children = walk_xml_to_parameter(subparams, el)
+            param_dict['children'] = children
 
-                param_dict['name'] = el.tag
+            param_dict['name'] = el.tag
 
             params.append(param_dict)
     except Exception as e:  # to be able to debug when there's an issue
