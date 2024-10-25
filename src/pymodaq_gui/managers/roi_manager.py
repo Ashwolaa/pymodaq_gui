@@ -519,7 +519,6 @@ class ROIManager(QObject):
                     width = np.max(((xrange[1] - xrange[0]) / 10, 2))
                     height = np.max(((yrange[1] - yrange[0]) / 10, 2))
                     pos = [int(np.mean(xrange) - width / 2), int(np.mean(yrange) - width / 2)]
-
                     roi = self.makeROI2D(roi_type,index=newindex, pos=pos,size=[width, height],pen=par['Color'])
                 
                 self.addROI(roi)
@@ -540,7 +539,6 @@ class ROIManager(QObject):
             elif change == 'parent':
                 if 'ROI' in param.name():
                     self.removeROI(self.ROIs[param.name()])
-
 
     def addROI(self,roi):
         roi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
@@ -638,9 +636,8 @@ class ROIManager(QObject):
         elif param.name() == 'y' or param.name() == 'right':         
             poss = pg.Point(pos[0], param.value())                   
         return poss
-    @Slot()
+    @Slot(type(ROI))
     def update_roi_tree(self, roi):
-
         par = self.settings.child(*('ROIs', roi.key()))
         if isinstance(roi, LinearROI):
             pos = roi.getRegion()
