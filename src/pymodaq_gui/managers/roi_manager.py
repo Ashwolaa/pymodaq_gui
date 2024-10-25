@@ -363,7 +363,7 @@ class ROIScalableGroup(GroupParameter):
                            selected=['red',]),
                               },]
         else:
-            child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect'},]
+            child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect','checkbox': True},]
         return child 
     @staticmethod
     def makeDisplayParam(index):
