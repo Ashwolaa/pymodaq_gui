@@ -676,10 +676,9 @@ class ROIManager(QObject):
             print(e)
 
     def clear_ROI(self):
-        indexes = [roi.index for roi in self._ROIs.values()]
-        for index in indexes:
-            self.settings.child(*('ROIs', roi_format(index))).remove()
-            # self.settings.sigTreeStateChanged.connect(self.roi_tree_changed)
+        keys = [roi.key() for roi in self._ROIs.values()]
+        for roi_key in keys:
+            self.settings.child(*('ROIs', roi_key)).remove()
 
     def load_ROI(self, path=None, params=None):
         try:
@@ -706,10 +705,9 @@ class ROIManager(QObject):
 
     def set_roi(self, roi_params, roi_params_new):
         for child, new_child in zip(roi_params, roi_params_new):
-            if 'group' not in child.opts['type']:
+            if new_child.value():
                 child.setValue(new_child.value())
-            else:
-                self.set_roi(child.children(), new_child.children())
+            self.set_roi(child.children(), new_child.children())
 
 
 class ROISaver:
