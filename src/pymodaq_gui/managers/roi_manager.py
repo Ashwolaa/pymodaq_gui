@@ -522,13 +522,7 @@ class ROIManager(QObject):
 
                     roi = self.makeROI2D(roi_type,index=newindex, pos=pos,size=[width, height],pen=par['Color'])
                 
-                roi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
-                roi.sigRegionChangeFinished.connect(self.update_roi_tree)
-                self.update_roi_tree(roi)
-
-                self.ROIs[roi.key()]=roi
-                self.viewer_widget.plotItem.addItem(roi)                
-
+                self.addROI(roi)
                 self.new_ROI_signal.emit(newindex, roi_type, par.name())
                 self.emit_colors()
                 self.roi_changed.emit()
@@ -546,6 +540,14 @@ class ROIManager(QObject):
             elif change == 'parent':
                 if 'ROI' in param.name():
                     self.removeROI(self.ROIs[param.name()])
+
+
+    def addROI(self,roi):
+        roi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
+        roi.sigRegionChangeFinished.connect(self.update_roi_tree)
+        self.update_roi_tree(roi)
+        self.ROIs[roi.key()]=roi
+        self.viewer_widget.plotItem.addItem(roi)  
 
     def makeROI1D(self,index,pos,**kwargs):
         roi = LinearROI(index=index, pos=pos,**kwargs)
@@ -601,6 +603,7 @@ class ROIManager(QObject):
             self.viewer_widget.plotItem.removeItem(roi)            
             if self.ROI_type =='2D':
                 roi = self.makeROI2D(roi_type=param.value(),index=roi.index,pos=state['pos'],size=state['size'],angle=state['angle'],pen=roi.pen)                
+                self.addROI(roi)
         elif param.name() == 'Color':
             roi.setPen(param.value())
             self.emit_colors()
