@@ -97,9 +97,7 @@ class DataPicker(CustomApp):
 
 def main():
     from pymodaq_gui.utils.utils import mkQApp
-    import sys
     import numpy as np
-
 
     app = mkQApp('DataPicker')
     area = DockArea()
@@ -121,7 +119,6 @@ def main():
 
     data_picker.show_data(data_to_plot)
     win.show()
-
     app.exec()
 
 
