@@ -125,7 +125,7 @@ class SliderParameterItem(WidgetParameterItem):
             'value': 0, 'min': None, 'max': None,
              'dec': False,
             'siPrefix': False, 'suffix': '', 'decimals': 12,
-            'int': False,'bounds':None,
+            'int': False, 'bounds': None, 'limits': None,
         }
         #Update relevant opts
         for k in defs:
@@ -134,15 +134,15 @@ class SliderParameterItem(WidgetParameterItem):
         #Additional changes according to user syntax
         if 'subtype' not in opts:
             opts['subtype'] = 'linear'
-        if defs['bounds'] is None:
-            defs['bounds'] = [0., float(self.param.value() or 1)]  # max value set to default value when no max given or 1 if no default
-            if 'limits' not in opts:
+        if defs['limits'] is None:
+            defs['limits'] = [0., float(self.param.value() or 1)]  # max value set to default value when no max given or 1 if no default
+            if 'bounds' not in opts:
                 if 'min' in opts:
-                    defs['bounds'][0] = opts['min']
+                    defs['limits'][0] = opts['min']
                 if 'max' in opts:
-                    defs['bounds'][1] = opts['max']
+                    defs['limits'][1] = opts['max']
             else:
-                defs['bounds'] = opts['limits']
+                defs['limits'] = opts['bounds']
                                 
         w = SliderSpinBox(subtype=opts['subtype'],**defs)
         self.setSizeHint(1, QtCore.QSize(50, 50))
