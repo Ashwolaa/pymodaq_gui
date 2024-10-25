@@ -512,7 +512,7 @@ class View2D(ActionManager, QtCore.QObject):
     @Slot(int, str, str)
     def update_roi_channels(self, index, roi_type=''):
         """Update the use_channel setting each time a ROI is added"""
-        self.roi_manager.update_use_channel(self.data_displayer.labels.copy())
+        self.roi_manager.update_use_channel(index,self.data_displayer.labels.copy())
 
     def prepare_ui(self):
         self.ROIselect.setVisible(False)

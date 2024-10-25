@@ -578,11 +578,10 @@ class ROIManager(QObject):
         self.remove_ROI_signal.emit(roi.key())
         self.emit_colors()
 
-    def update_use_channel(self, channels: List[str]):
-        for ind in range(len(self)):
-            param = self.settings.child('ROIs', roi_format(ind), 'use_channel')
-            param.setValue(dict(all_items=channels,
-                           selected=channels))
+    def update_use_channel(self, index, channels: List[str]):
+        param = self.settings.child('ROIs', roi_format(index), 'use_channel')
+        param.setValue(dict(all_items=channels,
+                        selected=channels))
     def update_roi(self, roi:ROI, param):
 
         roi.signalBlocker.reblock()
