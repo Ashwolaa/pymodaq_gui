@@ -102,9 +102,10 @@ class SliderSpinBox(QtWidgets.QWidget):
         except Exception:
             pass
         if self.subtype == 'linear':
-            value = int((val - min_val) / (max_val - min_val) * 100)
+            value = np.rint((val - min_val) / (max_val - min_val) * 100)
         else:
-            value = int((np.log10(val) - np.log10(min_val)) / (np.log10(max_val) - np.log10(min_val)) * 100)
+            value = np.rint((np.log10(val) - np.log10(min_val)) / (np.log10(max_val) - np.log10(min_val)) * 100)
+        value = int(value)
         self.slider.setValue(value)
         self.slider.valueChanged.connect(self.update_spinbox)
         self.spinbox.valueChanged.connect(self.update_slide)
@@ -143,7 +144,7 @@ class SliderParameterItem(WidgetParameterItem):
                     defs['bounds'][1] = opts['max']
             else:
                 defs['bounds'] = opts['limits']
-                                
+
         w = SliderSpinBox(subtype=opts['subtype'],**defs)
         self.setSizeHint(1, QtCore.QSize(50, 50))
         return w
@@ -165,6 +166,9 @@ class SliderParameterItem(WidgetParameterItem):
             super().optsChanged(param, opts)
         except AttributeError:
             pass
+
+        if 'bounds' in opts:
+            self.widget.spinbox.setOpts(bounds = opts['bounds']) #Change in bounds is updated
 
     def limitsChanged(self, param, limits):
         self.widget.spinbox.setOpts(bounds=limits)        
