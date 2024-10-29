@@ -548,12 +548,32 @@ class ROIManager(QObject):
         self.viewer_widget.plotItem.addItem(roi)  
 
     def makeROI1D(self,index,pos,**kwargs):
+        """Convenience function to make custom ROI_1D
+
+        Args:
+            index (int): Current index of ROI
+            pos: Initial position of ROI
+
+        Returns:
+            roi: LinearROI
+        """
         roi = LinearROI(index=index, pos=pos,**kwargs)
-        roi.setZValue(-10)
+        # roi.setZValue(-10)
         roi.setOpacity(0.2)
         return roi                    
 
     def makeROI2D(self,roi_type,index,pos,size,**kwargs):
+        """Convenience function to make custom ROI_2D
+
+        Args:
+            roi_type (str): Type of 2D ROI
+            index (int): Current index of ROI
+            pos: Initial position of ROI
+            size: Initial size of ROI
+
+        Returns:
+            roi: pg.ROI 
+        """
         if roi_type == 'RectROI':
             roi = RectROI(index=index, pos=pos,
                                 size=size, name=roi_format(index),**kwargs)
@@ -567,6 +587,11 @@ class ROIManager(QObject):
         return roi
     
     def removeROI(self,roi):
+        """Function to remove roi from dict and widget
+
+        Args:
+            roi (pg.ROI): roi to be removed
+        """
         roi_group = self.settings.child('ROIs')
         for param in roi_group.children():                
                 if roi.key() == param.name():
@@ -579,6 +604,12 @@ class ROIManager(QObject):
         self.emit_colors()
             
     def update_use_channel(self, channels: List[str], index=None):
+        """Function to update the selected channels. If no index is given, the channels are applied to all ROIs.
+
+        Args:
+            channels (List[str]): channels list from a viewer
+            index (int, optional): ROI index. Defaults to None.
+        """
         if index is not None:   
             param = self.settings.child('ROIs', roi_format(index), 'use_channel')
             param.setValue(dict(all_items=channels,
@@ -609,6 +640,7 @@ class ROIManager(QObject):
             center = roi.center()
             pos = self.update_roi_pos(center,param)
             if self.ROI_type =='1D':
+                roi.set_positions()
                 pos.sort()
             else:
                 roi.set_center(pos)
@@ -616,8 +648,9 @@ class ROIManager(QObject):
             position = roi.pos()
             pos = self.update_roi_pos(position,param)
             if self.ROI_type =='1D':
-                pos.sort()
-            roi.setPos(pos)          
+                roi.setRegion([min(pos),max(pos)])
+            elif self.ROI_type =='2D':
+                roi.setPos(pos)          
         elif param.name() == 'angle':
             roi.setAngle(param.value(),center=[0.5,0.5])
         elif param.name() == 'zlevel':
@@ -636,6 +669,7 @@ class ROIManager(QObject):
         elif param.name() == 'y' or param.name() == 'right':         
             poss = pg.Point(pos[0], param.value())                   
         return poss
+    
     @Slot(type(ROI))
     def update_roi_tree(self, roi):
         par = self.settings.child(*('ROIs', roi.key()))
