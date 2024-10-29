@@ -72,7 +72,7 @@ class CustomApp(QObject, ActionManager, ParameterManager):
 
         self.setup_actions()  # see ActionManager MixIn class
 
-        self.setup_menu()
+        self.setup_menu(self._menubar)
 
         self.connect_things()
 
@@ -92,7 +92,7 @@ class CustomApp(QObject, ActionManager, ParameterManager):
         """
         raise NotImplementedError
 
-    def setup_menu(self):
+    def setup_menu(self, menubar: QtWidgets.QMenuBar = None):
         """Non mandatory method to be subclassed in order to create a menubar
 
         create menu for actions contained into the self._actions, for instance:
