@@ -86,7 +86,8 @@ class ConfigSaverLoader:
             path_param = self.base_path[:]
             path_param.extend(putils.get_param_path(param)[1:])
             try:
-                self.config[tuple(path_param)] = param.value()
+                if 'group' not in param.opts['type']:
+                    self.config[tuple(path_param)] = param.value()
             except Exception as e:
                 pass
         self.config.save()

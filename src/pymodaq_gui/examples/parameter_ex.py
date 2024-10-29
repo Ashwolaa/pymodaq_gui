@@ -22,9 +22,10 @@ class ParameterEx(ParameterManager):
         {'title': 'Numbers:', 'name': 'numbers', 'type': 'group', 'children': [
             {'title': 'Standard float', 'name': 'afloat', 'type': 'float', 'value': 20., 'min': 1.,
              'tip': 'displays this text as a tooltip'},
-            {'title': 'Linear Slide float', 'name': 'linearslidefloat', 'type': 'slide', 'value': 50, 'default': 50,
-             'min': 0,
-             'max': 123, 'subtype': 'linear'},
+            {'title': 'Linear Slide float', 'name': 'linearslidefloat', 'type': 'slide',
+             'value': 50, 'default': 50, 'min': 0, 'max': 123, 'subtype': 'linear'},
+            {'title': 'Linear Slide float w limits', 'name': 'linearslidefloatlimits',
+             'type': 'slide', 'value': 50, 'default': 50, 'limits': (24, 123), 'subtype': 'linear'},
             {'title': 'Linear int Slide', 'name': 'linearslideint', 'type': 'slide', 'value': 50, 'default': 50, 'step':1,
              'min': 0,
              'max': 123, 'subtype': 'linear', 'int': True},
@@ -119,6 +120,18 @@ class ParameterEx(ParameterManager):
         """
         """
         print(f'The parameter {param.name()} changed its value to {param.value()}')
+
+        if param.name() == 'afloat':
+            limits = (param.value(),
+                      self.settings.child('numbers', 'linearslidefloatlimits').opts['limits'][1])
+            self.settings.child('numbers', 'linearslidefloatlimits').setLimits(limits)
+            self.settings.child('numbers', 'linearslidefloat').setOpts(min=limits[0])
+
+    def options_changed(self, param, data: dict):
+        print(f'{param} option has been changed: {data}')
+
+    def limits_changed(self, param, data):
+        print(f'{param} limits have been changed: {data}')
 
 
 def main():

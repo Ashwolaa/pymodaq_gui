@@ -1,5 +1,6 @@
+import numbers
 from pathlib import Path
-from typing import List, Union, Dict, Optional
+from typing import List, Union, Dict, Optional, Tuple, Any
 
 from qtpy import QtWidgets, QtCore
 from pymodaq_gui.managers.action_manager import ActionManager
@@ -152,9 +153,17 @@ class ParameterManager:
             elif change == 'parent':
                 self.param_deleted(param)
 
-    def value_changed(self, param):
+            elif change == 'options':
+                self.options_changed(param, data)
+
+            elif change == 'limits':
+                self.limits_changed(param, data)
+
+    def value_changed(self, param: Parameter):
         """Non-mandatory method  to be subclassed for actions to perform (methods to call) when one of the param's
         value in self._settings is changed
+
+        For this to be triggered, the Parameter method: **setValue** should be used
 
         Parameters
         ----------
@@ -170,8 +179,12 @@ class ParameterManager:
         """
         ...
 
-    def child_added(self, param, data):
-        """Non-mandatory method to be subclassed for actions to perform when a param has been added in self.settings
+    def child_added(self, param: Parameter, data: Parameter):
+        """Non-mandatory method to be subclassed for actions to perform when a param has been
+        added in the attribute settings
+
+        For this to be triggered, one of the Parameter methods: **addChild**, **addChildren**
+        or **insertChildren** should be used
 
         Parameters
         ----------
@@ -182,8 +195,10 @@ class ParameterManager:
         """
         pass
 
-    def param_deleted(self, param):
+    def param_deleted(self, param: Parameter):
         """Non-mandatory method to be subclassed for actions to perform when one of the param in self.settings has been deleted
+
+        For this to be triggered, the Parameter method: **removeChild** should be used
 
         Parameters
         ----------
@@ -191,6 +206,40 @@ class ParameterManager:
             the parameter that has been deleted
         """
         pass
+
+    def options_changed(self, param: Parameter, data: Dict[str, Any]):
+        """Non-mandatory method to be subclassed for actions to perform when one of the options
+        of any parameter in the settings attribute has been changed.
+
+        For this to be triggered, the Parameter method: **setOpts** should be used
+
+        Parameters
+        ----------
+        param: Parameter
+            the parameter chose option has been changed
+        data: dict
+            the key is the string of the changed option
+            the value depend on the type of option
+        """
+        pass
+
+    def limits_changed(self, param: Parameter, data: Tuple[numbers.Number, numbers.Number]):
+        """Non-mandatory method to be subclassed for actions to perform when the limits
+        of any parameter in the *settings* attribute has been changed
+
+        For this to be triggered, the Parameter method: **setLimits** should be used
+
+        Parameters
+        ----------
+        param: Parameter
+            the parameter chose option has been changed
+        data: tuple of numbers
+            tuple of float or int depending on the parameter type. For peculiar Parameter, could be
+            a tuple of some other objects
+
+        """
+        pass
+
 
     def save_settings_slot(self, file_path: Path = None):
         """ Method to save the current settings using a xml file extension.

@@ -1,6 +1,8 @@
 import sys
 import os
 
+from pathlib import Path
+
 import numpy as np
 from qtpy import QtGui, QtWidgets, QtCore
 from qtpy.QtCore import Qt, QObject, Slot, Signal
@@ -21,10 +23,10 @@ from pymodaq_gui.h5modules.saving import H5Saver
 from pymodaq_gui.parameter.pymodaq_ptypes.pixmap import PixmapCheckData
 
 
-local_path = get_set_local_dir()
-navigator_path = os.path.join(local_path, 'navigator_temp_files')
-if not os.path.isdir(navigator_path):
-    os.makedirs(navigator_path)
+local_path = get_set_local_dir(user=True)
+# navigator_path = local_path.joinpath('navigator_temp_files')
+# if not navigator_path.is_dir():
+#     navigator_path.mkdir()
 
 logger = set_logger(get_module_name(__file__))
 

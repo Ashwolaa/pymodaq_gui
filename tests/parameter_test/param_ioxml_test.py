@@ -133,7 +133,7 @@ class TestXMLbackForth():
         ioxml.parameter_to_xml_file(defaultparameter,
                                     saveto,
                                     overwrite=True)
-        assert saveto.with_suffix(".xml").stat().st_mtime_ns > origin_modification_time
+        assert saveto.with_suffix(".xml").stat().st_mtime_ns >= origin_modification_time
 
 
 

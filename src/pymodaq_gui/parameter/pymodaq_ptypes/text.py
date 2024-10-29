@@ -93,7 +93,7 @@ class PlainTextParameterItem(WidgetParameterItem):
         # # (WidgetParameter should just natively support this style)
         # WidgetParameterItem.treeWidgetChanged(self)
         if self.treeWidget() is not None:
-            self.treeWidget().setFirstItemColumnSpanned(self.subItem, True)
+            self.subItem.setFirstColumnSpanned(True)
             self.treeWidget().setItemWidget(self.subItem, 0, self.w)
 
             # for now, these are copied from ParameterItem.treeWidgetChanged
