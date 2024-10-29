@@ -622,6 +622,7 @@ class ROIManager(QObject):
                     
     def update_roi(self, roi:ROI, param):
 
+        par = self.get_parameter(roi)
         roi.signalBlocker.reblock()
         parent_name = param.parent().opts['name']
 
@@ -646,11 +647,15 @@ class ROIManager(QObject):
                 roi.set_center(pos)
         elif parent_name == 'position':
             position = roi.pos()
-            pos = self.update_roi_pos(position,param)
+            pos = self.update_roi_pos(position,param)                        
             if self.ROI_type =='1D':
-                roi.setRegion([min(pos),max(pos)])
-            elif self.ROI_type =='2D':
-                roi.setPos(pos)          
+                pos = np.sort(pos) #Subclass pg.Point to implement sort?
+                roi.setPos(pos) 
+                self.settings_signalBlocker.reblock()
+                par.child(*('position', 'left')).setValue(pos[0])
+                par.child(*('position', 'right')).setValue(pos[1])         
+                self.settings_signalBlocker.unblock()
+            roi.setPos(pos)          
         elif param.name() == 'angle':
             roi.setAngle(param.value(),center=[0.5,0.5])
         elif param.name() == 'zlevel':
@@ -661,6 +666,8 @@ class ROIManager(QObject):
         elif param.name() == 'height':
             size = roi.size()
             roi.setSize((size[0], param.value()))
+
+        self.update_roi_tree(roi)
         roi.signalBlocker.unblock()
 
     def update_roi_pos(self,pos,param):
@@ -670,9 +677,18 @@ class ROIManager(QObject):
             poss = pg.Point(pos[0], param.value())                   
         return poss
     
+    def get_parameter(self,roi):
+        if type(roi) == int:
+            par =  self.settings.child(*('ROIs', roi_format(roi)))
+        else:
+            par = self.settings.child(*('ROIs', roi.key()))
+        return par
+
+
     @Slot(type(ROI))
     def update_roi_tree(self, roi):
-        par = self.settings.child(*('ROIs', roi.key()))
+        par = self.get_parameter(roi)        
+
         if isinstance(roi, LinearROI):
             pos = roi.getRegion()
         else:
