@@ -166,9 +166,23 @@ class SliderParameterItem(WidgetParameterItem):
             super().optsChanged(param, opts)
         except AttributeError:
             pass
-
+        sbOpts = {}                  
         if 'bounds' in opts:
-            self.widget.spinbox.setOpts(bounds = opts['bounds']) #Change in bounds is updated
+            lim = opts.pop('bounds')
+            self.limitsChanged(None,lim)
+            
+        if 'min' in opts:
+            self.widget.spinbox.setMinimum(opts['min'])            
+        if 'max' in opts:
+            self.widget.spinbox.setMaximum(opts['max'])            
+
+        for k, v in opts.items():
+            if k in self.widget.spinbox.opts:
+                sbOpts[k] = v
+        self.widget.spinbox.setOpts(**sbOpts)
+        self.updateDisplayLabel()
+
+        self.limitsChanged(param,limits=self.widget.spinbox.opts['bounds'])
 
     def limitsChanged(self, param, limits):
         self.widget.spinbox.setOpts(bounds=limits)        
