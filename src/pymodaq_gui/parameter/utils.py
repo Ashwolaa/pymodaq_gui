@@ -166,14 +166,17 @@ def iter_children(param, childlist=[]):
     return childlist
 
 
-def iter_children_params(param, childlist=[]):
+def iter_children_params(param, childlist=[], filter_type=[]):
     """Get a list of parameters under a given Parameter
 
     """
     for child in param.children():
-        childlist.append(child)
+        if child.opts['type'] in filter_type:
+            pass
+        else:
+            childlist.append(child)
         if child.hasChildren():
-            childlist.extend(iter_children_params(child, []))
+            childlist.extend(iter_children_params(child, [], filter_type))
     return childlist
 
 

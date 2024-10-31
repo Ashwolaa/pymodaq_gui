@@ -26,11 +26,12 @@ from pymodaq_gui.parameter import (Parameter, ParameterTree, ioxml,
 from pymodaq_gui.parameter import utils as putils
 from pymodaq_gui.plotting.utils import plot_utils
 from pymodaq_gui.utils import select_file
-
+from pymodaq_gui.utils.utils import first_available_integer
 data_processors = DataProcessorFactory()
 
 roi_path = get_set_roi_path()
 logger = set_logger(get_module_name(__file__))
+translate = QtCore.QCoreApplication.translate
 
 
 ROI_NAME_PREFIX = 'ROI_'
@@ -87,6 +88,8 @@ class ROIPositionMapper(QtWidgets.QWidget):
 
 class ROI(pgROI):
     index_signal = Signal(int)
+    sigCopyRequested = Signal(object)
+    sigDoubleClicked = Signal(object,object)
 
     def __init__(self, *args, index=0, name='roi', **kwargs):
         super().__init__(*args, **kwargs)
@@ -94,11 +97,42 @@ class ROI(pgROI):
         self.index = index
         self.signalBlocker = QSignalBlocker(self)
         self.signalBlocker.unblock()
-        self._menu = QtWidgets.QMenu()
-        self._menu.addAction('Set ROI positions', self.set_positions)
-        self._menu.addAction('Copy ROI to clipboard', self.copy_clipboard)
         # self.sigRegionChangeFinished.connect(self.emit_index_signal)
         self._clipboard = QtGui.QGuiApplication.clipboard()
+
+
+    def _emitCopyRequest(self):
+        self.sigCopyRequested.emit(self)
+
+    def contextMenuEnabled(self,):
+        return True
+    
+    def raiseContextMenu(self, ev):
+        menu = self.getMenu()
+        menu = self.scene().addParentContextMenus(self, menu, ev)
+        pos = ev.screenPos()
+        menu.popup(QtCore.QPoint(int(pos.x()), int(pos.y())))
+
+    def getMenu(self):
+        if self.menu is None:
+            self.menu = QtWidgets.QMenu()
+            self.menu.setTitle(translate("ROI", "ROI"))
+            self.menu.addAction('Set ROI positions', self.set_positions)
+            self.menu.addAction('Copy ROI to clipboard', self.copy_clipboard)            
+            self.menu.addAction("Copy ROI",self._emitCopyRequest)
+            self.menu.addAction("Remove ROI",self._emitRemoveRequest)       
+        return self.menu
+    
+    def contextMenuEvent(self, event):
+        if self.menu is not None:
+            self.menu.exec(event.screenPos())
+
+    def mouseDoubleClickEvent(self,ev):
+        if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            ev.accept()
+            print(self.display_state())
+            self.sigDoubleClicked.emit(self,ev)
+
 
     def emit_index_signal(self):
         self.index_signal.emit(self.index)
@@ -127,9 +161,8 @@ class ROI(pgROI):
         info = plot_utils.RoiInfo.info_from_rect_roi(self)
         self._clipboard.setText(str(info.to_slices()))
 
-    def contextMenuEvent(self, event):
-        if self._menu is not None:
-            self._menu.exec(event.screenPos())
+
+
 
     def width(self) -> float:
         return self.size().x()
@@ -180,7 +213,8 @@ class ROIBrushable(ROI):
 
 class LinearROI(pgLinearROI):
     index_signal = Signal(int)
-
+    sigCopyRequested = Signal(object)
+    sigDoubleClicked = Signal(object,object)
     def __init__(self, index=0, pos=[0, 10], name = 'roi', **kwargs):
         super().__init__(values=pos, **kwargs)
         self.name = name
@@ -505,24 +539,8 @@ class ROIManager(QObject):
                 childName = param.name()
             if change == 'childAdded':  # new roi to create
                 par: Parameter = data[0]
-                newindex = int(par.name()[-2:])
-                roi_type = ''
-                pos = self.viewer_widget.plotItem.vb.viewRange()
-                if self.ROI_type == '1D':
-                    roi_type = ''
-                    pos = pos[0]
-                    pos = pos[0] + np.diff(pos)*np.array([2,4])/6
-                    roi = self.makeROI1D(newindex,pos,brush=par['Color'])
-                elif self.ROI_type == '2D':
-                    roi_type = par.child('roi_type').value()
-                    xrange,yrange=pos                    
-                    width = np.max(((xrange[1] - xrange[0]) / 10, 2))
-                    height = np.max(((yrange[1] - yrange[0]) / 10, 2))
-                    pos = [int(np.mean(xrange) - width / 2), int(np.mean(yrange) - width / 2)]
-                    roi = self.makeROI2D(roi_type,index=newindex, pos=pos,size=[width, height],pen=par['Color'])
-                
+                roi = self.makeROI(par)                
                 self.addROI(roi)
-                self.new_ROI_signal.emit(newindex, roi_type, par.name())
                 self.emit_colors()
                 self.roi_changed.emit()
 
@@ -540,9 +558,31 @@ class ROIManager(QObject):
                 if 'ROI' in param.name():
                     self.removeROI(self.ROIs[param.name()])
 
+    def makeROI(self,par,isCopy=False):
+        newindex = int(par.name()[-2:])
+        pos = self.viewer_widget.plotItem.vb.viewRange()
+        if self.ROI_type == '1D':
+            roi_type = ''
+            pos = pos[0]
+            pos = pos[0] + np.diff(pos)*np.array([2,4])/6
+            roi = self.makeROI1D(newindex,pos,brush=par['Color'])
+        elif self.ROI_type == '2D':
+            roi_type = par.child('roi_type').value()
+            xrange,yrange=pos                    
+            width = np.max(((xrange[1] - xrange[0]) / 10, 2))
+            height = np.max(((yrange[1] - yrange[0]) / 10, 2))
+            pos = [int(np.mean(xrange) - width / 2), int(np.mean(yrange) - width / 2)]
+            roi = self.makeROI2D(roi_type,index=newindex, pos=pos,size=[width, height],pen=par['Color'])
+
+        self.new_ROI_signal.emit(newindex, roi_type, par.name())
+        return roi
+
     def addROI(self,roi):
         roi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
         roi.sigRegionChangeFinished.connect(self.update_roi_tree)
+        roi.sigRemoveRequested.connect(self.removeROI)
+        roi.sigCopyRequested.connect(self.copyROI)        
+
         self.update_roi_tree(roi)
         self.ROIs[roi.key()]=roi
         self.viewer_widget.plotItem.addItem(roi)  
@@ -602,7 +642,23 @@ class ROIManager(QObject):
         self.viewer_widget.plotItem.removeItem(roi)
         self.remove_ROI_signal.emit(roi.key())
         self.emit_colors()
-            
+
+    def copyROI(self,roi:ROI):
+        index = first_available_integer(self.getIndexes()) 
+        
+        roi_group = self.settings.child('ROIs')
+        #Copy parameter and edit name
+        param = self.get_parameter(roi).saveState()        
+        param['name'] = roi_format(index)    
+        param = Parameter.create(**param)
+        self.settings_signalBlocker.reblock()
+        roi_group.addChild(param)
+        self.settings_signalBlocker.unblock()
+        new_roi = self.makeROI(param)
+        [self.update_roi(new_roi,p) for p in putils.iter_children_params(param,filter_type=['group',])]        
+        self.addROI(new_roi)
+
+
     def update_use_channel(self, channels: List[str], index=None):
         """Function to update the selected channels. If no index is given, the channels are applied to all ROIs.
 
