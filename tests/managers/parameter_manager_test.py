@@ -11,7 +11,7 @@ from qtpy import QtWidgets
 from pyqtgraph.parametertree import Parameter
 
 from pymodaq_gui.examples.parameter_ex import ParameterEx
-from pymodaq_gui.parameter.utils import (
+from pymodaq_gui.parameter.utils import (getValues,getStruct,
     iter_children_params, compareParameters,
     compareStructureParameter, compareValuesParameter)
 from pymodaq_gui.utils.widgets.table import TableModel
@@ -69,7 +69,7 @@ def test_load(qtbot, tmp_path):
     ptree.save_settings_slot(file_path)
 
     parameter_copy = Parameter.create(name='settings', type='group', children=ParameterEx.params)
-    compareValuesParameter(ptree.settings, parameter_copy)
+    assert compareValuesParameter(ptree.settings, parameter_copy)
 
     parameters = iter_children_params(ptree.settings, childlist=[])
     parameters_copy = iter_children_params(parameter_copy, childlist=[])

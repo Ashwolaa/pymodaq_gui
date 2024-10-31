@@ -17,6 +17,11 @@ class ParameterEx(ParameterManager):
             {'title': 'A visible group:', 'name': 'agroup', 'type': 'group', 'children': []},
             {'title': 'An hidden group:', 'name': 'bgroup', 'type': 'group', 'children': [], 'visible': False},  # this
             # visible option is not available in usual pyqtgraph group
+            {'title': 'A bool with children:', 'name': 'booleans_group', 'type': 'bool', 'value':False, 'tip': 'Any Parameter can have its own children', 'children': [
+            {'title': 'A bool in a bool', 'name': 'a_bool_in_a_bool', 'type': 'bool', 'value': True},
+            {'title': 'A push with children', 'name': 'aboolpush', 'type': 'bool_push', 'value': True, 'label': 'action','children':[
+                 {'title': 'A string in a group', 'name': 'atte_in_a_group', 'type': 'str', 'value': 'this is a string you can edit'},
+            ]},]},            
         ]},
 
         {'title': 'Numbers:', 'name': 'numbers', 'type': 'group', 'children': [
