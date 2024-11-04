@@ -7,7 +7,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 from collections import OrderedDict
 from qtpy import QtGui
-from qtpy.QtCore import QDateTime
+from qtpy.QtCore import QDateTime, QTime
 from pymodaq_gui.parameter import Parameter
 
 from pyqtgraph.parametertree.Parameter import PARAM_TYPES, PARAM_NAMES
@@ -105,7 +105,7 @@ def add_text_to_elt(elt, param):
     elif param_type == 'date_time':
         text = str(param.value().toMSecsSinceEpoch())
     elif param_type == 'date':
-        text = str(QDateTime(param.value()).toMSecsSinceEpoch())
+        text = str(QDateTime(param.value(), QTime()).toMSecsSinceEpoch())
     elif param_type == 'table_view':
         try:
             data = dict(classname=param.value().__class__.__name__,

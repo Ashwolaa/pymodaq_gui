@@ -25,10 +25,10 @@ jobs:
           python-version: ${{ inputs.python }}
       - name: Install package
         run: |
-          sudo apt install libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 x11-utils
+          sudo apt install libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 x11-utils libgl1 libegl1
           python -m pip install --upgrade pip
           export QT_DEBUG_PLUGINS=1
-          pip install flake8 pytest pytest-cov pytest-qt pytest-xdist pytest-xvfb setuptools wheel numpy h5py ${{ inputs.qt5 }}
+          pip install flake8 pytest pytest-cov pytest-qt pytest-xvfb setuptools wheel numpy h5py ${{ inputs.qt5 }}
           git branch
           pip install -e .    
       - name: create local pymodaq folder and setting permissions
@@ -41,9 +41,8 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=docs
       - name: Test with pytest
         run: |
-          pytest --cov=pymodaq --cov-report=xml -n auto
-      - name: Upload coverage to codecov.io
+          pytest --cov --cov-report=xml
+      - name: Upload results to Codecov
         uses: codecov/codecov-action@v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml

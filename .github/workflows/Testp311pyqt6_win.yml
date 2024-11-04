@@ -1,0 +1,10 @@
+name: '3.11 PyQt6 Windows'
+
+on: [push]
+
+jobs:
+  call_workflow:
+    uses: ./.github/workflows/Testbase_win.yml
+    with:
+      python: '3.11'
+      qt5: 'pyqt6'
