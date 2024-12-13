@@ -237,10 +237,13 @@ class ROIManager(QObject):
                     self.roi_value_changed.emit(parent_name, (param, param.value()))
                 if param.name() == 'Color':
                     self.emit_colors()
-
             elif change == 'parent':
                 if 'ROI' in param.name():
                     self.removeROI(self.ROIs[param.name()])
+
+            elif change == 'contextMenu':  # MenuSel
+                if data=='Copy':
+                    self.copyROI(self.ROIs[param.name()])                    
 
     def makeROI(self,par,isCopy=False):
         newindex = int(par.name()[-2:])
