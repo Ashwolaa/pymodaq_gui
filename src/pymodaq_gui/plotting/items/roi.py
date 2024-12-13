@@ -34,7 +34,7 @@ class ROI(pgROI):
     sigCopyRequested = Signal(object)
     sigDoubleClicked = Signal(object,object)
 
-    def __init__(self, index=0, name='roi', *args, **kwargs):
+    def __init__(self, *args, index=0, name='roi', **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.index = index

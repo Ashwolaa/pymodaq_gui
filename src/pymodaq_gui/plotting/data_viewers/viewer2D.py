@@ -17,7 +17,9 @@ from pymodaq_utils.logger import set_logger, get_module_name
 from pymodaq_data.data import (Axis, DataToExport, DataFromRoi, DataRaw,
                                DataDistribution, DataWithAxes)
 
-from pymodaq_gui.managers.roi_manager import ROIManager, SimpleRectROI
+from pymodaq_gui.managers.roi_manager import ROIManager
+from pymodaq_gui.plotting.items.roi import SimpleRectROI
+
 from pymodaq_gui.managers.action_manager import ActionManager
 from pymodaq_gui.plotting.widgets import ImageWidget
 from pymodaq_gui.plotting.data_viewers.viewer import ViewerBase
