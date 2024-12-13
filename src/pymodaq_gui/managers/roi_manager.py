@@ -329,19 +329,27 @@ class ROIManager(QObject):
         self.emit_colors()
 
     def copyROI(self,roi:ROI):
+        """Method to copy a ROI and add it to the parameter tree and to the viewer widget
+        The method extracts the parameters of the copied ROI, create a new parameter, a new ROI and update it with the settings from the copied parameter
+        Args:
+            roi (ROI): the ROI to be copied
+        """
         index = first_available_integer(self.getIndexes()) 
         
         roi_group = self.settings.child('ROIs')
         #Copy parameter and edit name
-        param = self.get_parameter(roi).saveState()        
-        param['name'] = roi_format(index)    
-        param = Parameter.create(**param)
+        param_roi = self.get_parameter(roi)
+        param_to_update = putils.iter_children_params(param_roi,[],filter_name=('roi_type',),filter_type=('group',)) # Parameters to update
+
+        param = param_roi.saveState() # Transforming parameter in dict
+        param['name'] = roi_format(index) # Changing name   
+        param = Parameter.create(**param) # Transforming dict in parameter
         self.settings_signalBlocker.reblock()
         roi_group.addChild(param)
         self.settings_signalBlocker.unblock()
         new_roi = self.makeROI(param)
+        [self.update_roi(new_roi,p) for p in param_to_update]       
         self.addROI(new_roi)
-        [self.update_roi(new_roi,p) for p in putils.iter_children_params(param,filter_type=['group',])]        
 
 
     def update_use_channel(self, channels: List[str], index=None):
@@ -368,7 +376,7 @@ class ROIManager(QObject):
 
         if param.name() == roi.key():
             roi.doShow(param.value())
-        if param.name() == 'roi_type':
+        elif param.name() == 'roi_type':
             state = roi.saveState()
             self.viewer_widget.plotItem.removeItem(roi)            
             if self.ROI_type =='2D':
