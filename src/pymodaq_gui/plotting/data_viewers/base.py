@@ -231,7 +231,7 @@ class ViewerBase(QObject):
         ----------
         data: data_mod.DataFromPlugins
         """
-        if len(data.shape) > 4:
+        if len(data.sig_indexes) > 2:
             raise ViewerError(f'Ndarray of dim: {len(data.shape)} cannot be plotted using a {self.viewer_type}')
 
         self.data_to_export = DataToExport(name=self.title)
@@ -273,7 +273,7 @@ class ViewerBase(QObject):
         raise NotImplementedError
 
     def setVisible(self, show=True):
-        """convenience method to show or hide the paretn widget"""
+        """convenience method to show or hide the parent widget"""
         self.parent.setVisible(show)
 
     @property

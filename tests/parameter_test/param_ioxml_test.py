@@ -99,9 +99,9 @@ class TestXMLbackForth():
     def test_save_load_xml(self):
 
         param_back = ioxml.XML_string_to_pobject(ioxml.parameter_to_xml_string(self.settings))
-
-        for child, child_back in zip(putils.iter_children_params(self.settings),
-                                     putils.iter_children_params(param_back)):
+        children_list_in = putils.iter_children_params(self.settings)
+        children_list_back = putils.iter_children_params(param_back)
+        for child, child_back in zip(children_list_in,children_list_back):
             assert child_back.name() == child.name()
             assert child_back.title() == child.title()
             assert child_back.value() == child.value()

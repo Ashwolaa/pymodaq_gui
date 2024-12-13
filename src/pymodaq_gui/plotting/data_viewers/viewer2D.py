@@ -465,6 +465,8 @@ class View2D(ActionManager, QtCore.QObject):
                         tip='Flip the image left/right', checkable=True)
         self.add_action('rotate', 'Rotate', 'rotation2',
                         tip='Rotate the image', checkable=True)
+        self.add_action('opposite', 'Opposite', 'remove',
+                        tip='Take the opposite of the image', checkable=True)
         self.add_action('legend', 'Legend', 'RGB',
                         tip='Show the legend', checkable=True)
 
@@ -866,18 +868,19 @@ class Viewer2D(ViewerBase):
         self.view.set_action_visible('flip_lr', data.distribution != 'spread')
         self.view.set_action_visible('rotate', data.distribution != 'spread')
         if data.distribution != 'spread':
-            for ind_data in range(len(data)):
-                data.data[ind_data] = self.transform_image(data.data[ind_data])
+            data = self.transform_image(data)
         return data
 
-    def transform_image(self, data):
+    def transform_image(self, dwa: DataWithAxes):
         if self.view.is_action_checked('flip_ud'):
-            data = np.flipud(data)
+            dwa = np.flipud(dwa)
         if self.view.is_action_checked('flip_lr'):
-            data = np.fliplr(data)
+            dwa = np.fliplr(dwa)
         if self.view.is_action_checked('rotate'):
-            data = np.flipud(np.transpose(data))
-        return data
+            dwa = np.flipud(np.transpose(dwa))
+        if self.view.is_action_checked('opposite'):
+            dwa = -dwa
+        return dwa
 
     def set_visible_items(self):
         for key in IMAGE_TYPES:
@@ -918,6 +921,7 @@ class Viewer2D(ViewerBase):
         self.view.connect_action('flip_lr', slot=self.update_data)
         self.view.connect_action('rotate', slot=self.update_data)
         self.view.connect_action('autolevels', slot=self.update_data)
+        self.view.connect_action('opposite', slot=self.update_data)
         self.view.connect_action('isocurve', slot=self.update_data)
         self.view.histogrammer.gradient_changed.connect(lambda: setattr(self, '_is_gradient_manually_set', True))
 

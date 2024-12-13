@@ -22,10 +22,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Human Machine Interfaces",
     "Topic :: Scientific/Engineering :: Visualization",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -45,8 +45,8 @@ dependencies = [
     "scipy",
     "setuptools>=60",
     "toml",
-    "pymodaq_utils",
-    "pymodaq_data>=5.0.3",
+    "pymodaq_utils>=0.0.8",
+    "pymodaq_data>=5.0.13",
 ]
 
 [project.scripts]
@@ -58,6 +58,7 @@ Tracker = "https://github.com/PyMoDAQ/pymodaq_gui/issues"
 
 [tool.hatch.version]
 source = "vcs"
+fallback-version = "5.0.0"
 
 [tool.hatch.build.targets.sdist]
 include = [

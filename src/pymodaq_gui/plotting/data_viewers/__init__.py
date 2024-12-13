@@ -1,4 +1,4 @@
-from .base import ViewersEnum
+from .base import ViewersEnum, ViewerError
 
 from .viewer0D import Viewer0D
 from .viewer1D import Viewer1D

@@ -7,7 +7,7 @@ import numpy as np
 
 class SliderSpinBox(QtWidgets.QWidget):
 
-    def __init__(self, *args, subtype='lin', **kwargs):
+    def __init__(self, *args, subtype='linear', **kwargs):
 
         super().__init__()
         self.subtype = subtype

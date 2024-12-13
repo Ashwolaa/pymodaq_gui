@@ -423,6 +423,7 @@ class View1D(ActionManager, QObject):
         self.connect_action('do_math', self.do_math)
         self.connect_action('scatter', self.data_displayer.update_scatter)
         self.connect_action('xyplot', self.data_displayer.update_xy)
+        self.connect_action('xyplot', self.process_xyplot)
         self.connect_action('sort', self.data_displayer.update_sort)
         self.connect_action('crosshair', self.show_hide_crosshair)
         self.connect_action('overlay', self.data_displayer.show_overlay)
@@ -436,6 +437,13 @@ class View1D(ActionManager, QObject):
 
         self.roi_manager.color_signal.connect(self.update_colors)
         self.data_displayer.labels_changed.connect(self.roi_manager.update_use_channel)
+
+    def process_xyplot(self):
+        """ Uncheck things if xyplot is active"""
+        if self.is_action_checked('xyplot') and self.is_action_checked('errors'):
+            self.get_action('errors').trigger()
+        if self.is_action_checked('xyplot') and self.is_action_checked('overlay'):
+            self.get_action('overlay').trigger()
 
     def update_colors(self, colors: list):
         for ind, roi_name in enumerate(self.roi_manager.ROIs):
@@ -820,10 +828,28 @@ def main_nans():
     sys.exit(app.exec_())
 
 
+def main_xy():
+
+    app = QtWidgets.QApplication(sys.argv)
+    from pymodaq_utils.math_utils import gauss1D
+    x = np.linspace(0, 200, 201)
+    y1 = gauss1D(x, 75, 25)
+    y2 = gauss1D(x, 120, 50, 2)
+
+    QtWidgets.QApplication.processEvents()
+    data = DataRaw('mydata', data=[y1, y2],
+                   axes=[Axis('myaxis', 'units', data=x, index=0, spread_order=0)],
+                   )
+    data.plot('qt')
+
+    sys.exit(app.exec_())
+
+
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    #main()
     # main_random()
     #main_errors()
     #main_extra_scatter()
+    main_xy()
     #main_view1D()
     #main_nans()

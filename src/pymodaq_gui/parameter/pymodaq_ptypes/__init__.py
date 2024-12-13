@@ -1,5 +1,5 @@
-from pyqtgraph.parametertree.parameterTypes.basetypes import (SimpleParameter, GroupParameter,
-                                                              GroupParameterItem)
+from pyqtgraph.parametertree.parameterTypes.basetypes import (
+    SimpleParameter, GroupParameter, GroupParameterItem)  # to be imported from elsewhere
 from .bool import BoolPushParameter
 from .pixmap import PixmapParameter, PixmapCheckParameter
 from .slide import SliderSpinBox, SliderParameter

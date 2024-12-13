@@ -58,6 +58,27 @@ P2 = Parameter(name='settings2', type='group', children=params2)
 P3 = Parameter(name='settings3', type='group', children=params3)
 P4 = Parameter(name='settings4', type='group', children=params4)
 
+def test_iter_children_params():
+    settings = Parameter.create(name='settings', type='group', children=params)
+    param_list = putils.iter_children_params(settings,childlist=[],filter_type=['group'])
+    assert all([p.type() != 'group' for p in param_list])
+    param_list = putils.iter_children_params(settings,childlist=[],filter_name=['axis'])
+    assert all([p.name() != 'axis' for p in param_list])
+    param_list = putils.iter_children_params(settings,childlist=[],filter_name=['axis'],select_filter=True)
+    assert all([p.name() == 'axis' for p in param_list])
+    param_list = putils.iter_children_params(settings,childlist=[],filter_type=['group'],select_filter=True)
+    assert all([p.type() == 'group' for p in param_list])
+
+def test_iter_children_attributes():
+    settings = Parameter.create(name='settings', type='group', children=params)
+    param_name = putils.iter_children_params(settings, childlist=[], output_type='name')
+    param_type = putils.iter_children_params(settings, childlist=[], output_type='type')
+    param_list = putils.iter_children_params(settings, childlist=[])
+    for p_name,p_type,p in zip(param_name,param_type,param_list):
+        assert p_name == p.name()      
+        assert p_type == p.type()        
+
+
 def test_get_param_path():
     settings = Parameter.create(name='settings', type='group', children=params)
 
@@ -136,10 +157,6 @@ def test_compareValuesParameter():
             putils.compareValuesParameter(param1=P1,param2=P3) == False,
             putils.compareValuesParameter(param1=P1,param2=P4) == False]
 
-        
-
-    
-
 
 class TestScroll:
     def test_scroll_log(self):
@@ -213,4 +230,15 @@ def test_set_param_from_param(qtbot):
 
     assert settings_old.child('main_settings', 'axis').value() == 2
     assert dict_widget.currentText() == 'DAQ2D'
+
+
+def test_ParameterWithPath_serialize():
+
+    p1_with_path = putils.ParameterWithPath(P1.child('numbers', 'afloat', 'aint'))
+    assert isinstance(putils.ser_factory.get_apply_serializer(p1_with_path), bytes)
+
+    param_back: putils.ParameterWithPath = putils.ser_factory.get_apply_deserializer(
+        putils.ser_factory.get_apply_serializer(p1_with_path))
+    assert param_back.path == p1_with_path.path
+    assert putils.compareParameters(param_back.parameter, p1_with_path.parameter)
 

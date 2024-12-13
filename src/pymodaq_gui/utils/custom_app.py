@@ -72,7 +72,10 @@ class CustomApp(QObject, ActionManager, ParameterManager):
 
         self.setup_actions()  # see ActionManager MixIn class
 
-        self.setup_menu(self._menubar)
+        try:
+            self.setup_menu(self._menubar)
+        except TypeError:
+            self.setup_menu()  # for backcompatibility
 
         self.connect_things()
 

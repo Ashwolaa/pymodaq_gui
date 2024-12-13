@@ -399,7 +399,9 @@ class SpreadDataDisplayer(BaseDataDisplayer):
                     self._navigator1D.show_data(nav_data)
                 elif len(nav_axes) == 2:
                     try:
-                        Triangulation(np.array([axis.get_data() for axis in nav_data.get_nav_axes()]))
+                        self._navigator2D.setVisible(True)
+                        self._navigator1D.setVisible(False)
+                        #Triangulation(np.array([axis.get_data() for axis in nav_data.get_nav_axes()]))
                         self._navigator2D.show_data(nav_data)
                     except QhullError as e:
                         self.triangulation = False
@@ -683,9 +685,10 @@ class ViewerND(ParameterManager, ActionManager, ViewerBase):
             self.axes_viewer.setVisible(len(nav_indexes) > 2 or (
                     len(nav_indexes) == 2 and not data.check_axes_linear()))
         elif data.distribution.name == DataDistribution.spread:
-            self.navigator2D.setVisible(len(nav_indexes) == 2 and self.data_displayer.triangulation)
-            self.navigator1D.setVisible(len(nav_indexes) == 1 or len(nav_indexes) > 2 or
-                                        len(nav_indexes) == 2 and
+            n_nav_axes = len(data.get_nav_axes())
+            self.navigator2D.setVisible(n_nav_axes == 2 and self.data_displayer.triangulation)
+            self.navigator1D.setVisible(n_nav_axes == 1 or n_nav_axes > 2 or
+                                        n_nav_axes == 2 and
                                         not self.data_displayer.triangulation)
         else:
             raise ValueError(f'Unknown distribution: {data.distribution.name}')
@@ -798,6 +801,44 @@ def main():
     prog.show_settings()
 
     widget.show()
+    sys.exit(app.exec_())
+
+
+def spread_main():
+    from pymodaq_data.data import DataRaw, Axis
+    app = QtWidgets.QApplication(sys.argv)
+    widget = QtWidgets.QWidget()
+    prog = ViewerND(widget)
+
+    param = np.linspace(1, 10, 10)
+
+    # generating Npts of spread 2D data
+    N = 100
+
+    x_axis_array = np.random.randint(-20, 50, size=N)
+    y_axis_array = np.random.randint(20, 40, size=N)
+
+    x_axis = Axis('xaxis', 'm', data=x_axis_array, index=0, spread_order=0)
+    y_axis = Axis('yaxis', 'm', data=y_axis_array, index=0, spread_order=1)
+    param_axis = Axis('Param', 'eV', data=param, index=1)
+
+    data_spread_1x2 = []
+    for i in param:
+        data_list = []
+        for ind in range(N):
+            data_list.append(mutils.gauss2D(x_axis.get_data()[ind], 10 + i, 15,
+                                            y_axis.get_data()[ind], 30 - i, 5))
+        data_array = np.squeeze(np.array(data_list))
+        data_spread_1x2.append(data_array)
+    data_spread_1x2 = np.array(data_spread_1x2).T
+
+    data_2D_1x2_spread = DataRaw('data2DSpread', data=[data_spread_1x2],
+                                          axes=[x_axis, y_axis, param_axis],
+                                          distribution='spread',
+                                          nav_indexes=(0,))
+
+    widget.show()
+    prog.show_data(data_2D_1x2_spread)
     sys.exit(app.exec_())
 
 
