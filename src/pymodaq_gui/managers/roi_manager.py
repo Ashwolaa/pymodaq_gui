@@ -128,7 +128,7 @@ class ROIScalableGroup(GroupParameter):
 
 class ROIManager(QObject):
 
-    new_ROI_signal = Signal(int, str, str)
+    new_ROI_signal = Signal(str)
     remove_ROI_signal = Signal(str)
     roi_value_changed = Signal(str, tuple)
     color_signal = Signal(list)
@@ -261,7 +261,6 @@ class ROIManager(QObject):
             pos = [int(np.mean(xrange) - width / 2), int(np.mean(yrange) - width / 2)]
             roi = self.makeROI2D(roi_type,index=newindex, pos=pos,size=[width, height],pen=par['Color'])
 
-        self.new_ROI_signal.emit(newindex, roi_type, par.name())
         return roi
 
     def addROI(self,roi):
@@ -273,6 +272,9 @@ class ROIManager(QObject):
         self.update_roi_tree(roi)
         self.ROIs[roi.key()]=roi
         self.viewer_widget.plotItem.addItem(roi)  
+
+        self.new_ROI_signal.emit(roi.key())
+
 
 
     def makeROI1D(self,index,pos,**kwargs):
@@ -342,7 +344,6 @@ class ROIManager(QObject):
         roi_group = self.settings.child('ROIs')
         #Copy parameter and edit name
         param_roi = self.get_parameter(roi)
-        param_to_update = putils.iter_children_params(param_roi,[],filter_name=('roi_type',),filter_type=('group',)) # Parameters to update
 
         param = param_roi.saveState() # Transforming parameter in dict
         param['name'] = roi_format(index) # Changing name   
@@ -351,7 +352,9 @@ class ROIManager(QObject):
         roi_group.addChild(param)
         self.settings_signalBlocker.unblock()
         new_roi = self.makeROI(param)
-        [self.update_roi(new_roi,p) for p in param_to_update]       
+
+        param_to_update = putils.iter_children_params(param_roi,[],filter_name=('roi_type',),filter_type=('group',)) # Parameters to update
+        [self.update_roi(new_roi,p) for p in reversed(param_to_update)]     
         self.addROI(new_roi)
 
 
