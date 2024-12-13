@@ -1,8 +1,4 @@
 
-import os
-import sys
-from collections import OrderedDict
-from pathlib import Path
 from typing import TYPE_CHECKING, List, Tuple, Union
 
 import numpy as np
@@ -14,19 +10,13 @@ from pymodaq_utils.utils import plot_colors
 from pyqtgraph import ROI as pgROI
 from pyqtgraph import LinearRegionItem as pgLinearROI
 from pyqtgraph import functions as fn
-from pyqtgraph.parametertree.parameterTypes.basetypes import GroupParameter
 from qtpy import QtCore, QtGui, QtWidgets
-from qtpy.QtCore import QObject, QSignalBlocker, Signal, Slot
-from qtpy.QtGui import QIcon, QPixmap
+from qtpy.QtCore import QSignalBlocker, Signal, Slot
 
 from pymodaq_gui.config import get_set_roi_path
-from pymodaq_gui.managers.action_manager import QAction
-from pymodaq_gui.parameter import (Parameter, ParameterTree, ioxml,
-                                   pymodaq_ptypes)
-from pymodaq_gui.parameter import utils as putils
+from pymodaq_gui.parameter import (Parameter, ParameterTree,
+                                   )
 from pymodaq_gui.plotting.utils import plot_utils
-from pymodaq_gui.utils import select_file
-from pymodaq_gui.utils.utils import first_available_integer
 data_processors = DataProcessorFactory()
 
 roi_path = get_set_roi_path()
@@ -44,20 +34,18 @@ class ROI(pgROI):
     sigCopyRequested = Signal(object)
     sigDoubleClicked = Signal(object,object)
 
-    def __init__(self, *args, index=0, name='roi', **kwargs):
+    def __init__(self, index=0, name='roi', *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.index = index
         self.signalBlocker = QSignalBlocker(self)
         self.signalBlocker.unblock()
-        # self.sigRegionChangeFinished.connect(self.emit_index_signal)
         self._clipboard = QtGui.QGuiApplication.clipboard()
-
 
     def _emitCopyRequest(self):
         self.sigCopyRequested.emit(self)
 
-    def contextMenuEnabled(self,):
+    def contextMenuEnabled(self):
         return True
     
     def raiseContextMenu(self, ev):
@@ -70,7 +58,6 @@ class ROI(pgROI):
         if self.menu is None:
             self.menu = QtWidgets.QMenu()
             self.menu.setTitle(translate("ROI", "ROI"))
-            self.menu.addAction('Set ROI positions', self.set_positions)
             self.menu.addAction('Copy ROI to clipboard', self.copy_clipboard)            
             self.menu.addAction("Copy ROI",self._emitCopyRequest)
             self.menu.addAction("Remove ROI",self._emitRemoveRequest)       
@@ -86,10 +73,8 @@ class ROI(pgROI):
             print(self.display_state())
             self.sigDoubleClicked.emit(self,ev)
 
-
     def emit_index_signal(self):
         self.index_signal.emit(self.index)
-
 
     @property
     def color(self):
@@ -100,15 +85,8 @@ class ROI(pgROI):
         return pg.Point(self.pos() + rotate2D(point =(self.width()/2,self.height()/2), angle=np.deg2rad(self.angle())))
 
     def set_center(self, center: Union[pg.Point, Tuple[float, float]]):
+        """ Set the center position of the ROI """
         self.setPos(center - rotate2D(point =(self.width()/2,self.height()/2), angle=np.deg2rad(self.angle())))
-
-    # def set_positions(self):
-    #     mapper = ROIPositionMapper(self.pos(), self.size())
-    #     settings = mapper.show_dialog()
-    #     if settings is not None:
-    #         self.setSize((settings['size', 'width'], settings['size', 'height']))
-    #         self.setPos((settings['position', 'x0'] - settings['size', 'width'] / 2,
-    #                      settings['position', 'y0'] - settings['size', 'height'] / 2))
 
     def copy_clipboard(self):
         info = plot_utils.RoiInfo.info_from_rect_roi(self)
@@ -120,10 +98,10 @@ class ROI(pgROI):
     def height(self) -> float:
         return self.size().y()
 
-    def key(self,):
+    def key(self) -> str:
         return roi_format(self.index)
     
-    def type(self)-> str:
+    def type(self) -> str:
         return type(self).__name__    
     
     def doShow(self,status,):
@@ -173,7 +151,6 @@ class LinearROI(pgLinearROI):
 
         self._menu = QtWidgets.QMenu()
         self._menu.addAction('Copy ROI to clipboard', self.copy_clipboard)
-        # self.sigRegionChangeFinished.connect(self.emit_index_signal)
         self._clipboard = QtGui.QGuiApplication.clipboard()
 
     def copy_clipboard(self):
@@ -225,7 +202,6 @@ class EllipseROI(ROI):
     ============== =============================================================
 
     """
-
 
     def __init__(self, index=0, pos=[0, 0], size=[10, 10], **kwargs):
         # QtGui.QGraphicsRectItem.__init__(self, 0, 0, size[0], size[1])

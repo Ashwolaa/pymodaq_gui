@@ -1,34 +1,31 @@
 
 import os
 import sys
+from typing import List, TYPE_CHECKING, Tuple, Union
+
+from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtCore import QObject, Slot, Signal,QSignalBlocker
+from qtpy.QtGui import QIcon, QPixmap
 from collections import OrderedDict
-from pathlib import Path
-from typing import TYPE_CHECKING, List, Tuple, Union
+import pyqtgraph.Point as Point
+
+from pymodaq_gui.parameter import utils as putils
+from pymodaq_gui.parameter import ParameterTree, Parameter, ioxml, pymodaq_ptypes
+from pyqtgraph.parametertree.parameterTypes.basetypes import GroupParameter
+
+from pymodaq_gui.managers.action_manager import QAction
+
+from pymodaq_utils.utils import plot_colors
+from pymodaq_utils.logger import get_module_name, set_logger
+from pymodaq_gui.config import get_set_roi_path
+from pymodaq_gui.utils import select_file
+from pymodaq_gui.plotting.items.roi import RectROI,LinearROI,EllipseROI,CircularROI,ROI
 
 import numpy as np
-import pyqtgraph as pg
+from pathlib import Path
 from pymodaq_data.post_treatment.process_to_scalar import DataProcessorFactory
-from pymodaq_utils.logger import get_module_name, set_logger
-from pymodaq_utils.math_utils import rotate2D
-from pymodaq_utils.utils import plot_colors
-from pyqtgraph import ROI as pgROI
-from pyqtgraph import LinearRegionItem as pgLinearROI
-from pyqtgraph import functions as fn
-from pyqtgraph.parametertree.parameterTypes.basetypes import GroupParameter
-from qtpy import QtCore, QtGui, QtWidgets
-from qtpy.QtCore import QObject, QSignalBlocker, Signal, Slot
-from qtpy.QtGui import QIcon, QPixmap
-
-from pymodaq_gui.config import get_set_roi_path
-from pymodaq_gui.managers.action_manager import QAction
-from pymodaq_gui.parameter import (Parameter, ParameterTree, ioxml,
-                                   pymodaq_ptypes)
-from pymodaq_gui.parameter import utils as putils
-from pymodaq_gui.plotting.utils import plot_utils
-from pymodaq_gui.utils import select_file
 from pymodaq_gui.utils.utils import first_available_integer
 
-from pymodaq_gui.plotting.items.roi import ROI,RectROI,EllipseROI,LinearROI
 data_processors = DataProcessorFactory()
 
 roi_path = get_set_roi_path()
@@ -36,12 +33,11 @@ logger = set_logger(get_module_name(__file__))
 translate = QtCore.QCoreApplication.translate
 
 
+ROI2D_TYPES = ['RectROI', 'EllipseROI', 'CircularROI']
+
 ROI_NAME_PREFIX = 'ROI_'
 def roi_format(index):
     return f'{ROI_NAME_PREFIX}{index:02d}'
-
-
-ROI2D_TYPES = ['RectROI', 'EllipseROI', 'CircularROI']
 
 class ROIScalableGroup(GroupParameter):
     def __init__(self, roi_type='1D', **opts):
@@ -49,7 +45,8 @@ class ROIScalableGroup(GroupParameter):
         opts['addText'] = "Add"
         self.roi_type = roi_type
         if roi_type != '1D':
-            opts['addList'] = ROI2D_TYPES        
+            opts['addList'] = ROI2D_TYPES
+        # self.color_list = ROIManager.color_list
         super().__init__(**opts)
 
     def addNew(self, typ=''):
@@ -64,13 +61,14 @@ class ROIScalableGroup(GroupParameter):
 
 
     def makeChild(self,index,roi_type):
-        child = {'name': roi_format(index), 'type': 'bool','value':True, 'removable': True, 'renamable': False, 'expanded': False,'context':['Copy',]}
+        child = {'name': ROIManager.roi_format(index), 'type': 'bool','value':True, 'removable': True, 'renamable': False, 'expanded': False,'context':['Copy',]}
         if self.roi_type =='2D':
             child['children'] = ROIScalableGroup.makeROIParam2D(roi_type,index)
         elif self.roi_type =='1D':
             child['children'] = ROIScalableGroup.makeROIParam1D(roi_type,index)
         return child  
-
+    
+    @staticmethod
     def makeChannelsParam(dim='2D'):
         if dim =='2D':
             child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect', 'checkbox': True,
@@ -80,6 +78,7 @@ class ROIScalableGroup(GroupParameter):
         else:
             child = [{'title': 'Use channel', 'name': 'use_channel', 'type': 'itemselect','checkbox': True},]
         return child 
+
     @staticmethod
     def makeDisplayParam(index):
         return [{'name': 'Color', 'type': 'color', 'value': list(np.roll(ROIManager.color_list, index)[0])},
@@ -124,6 +123,9 @@ class ROIScalableGroup(GroupParameter):
                     ]}, ])
             
             return children
+
+
+
 class ROIManager(QObject):
 
     new_ROI_signal = Signal(int, str, str)
@@ -203,6 +205,7 @@ class ROIManager(QObject):
         self.settings.sigTreeStateChanged.connect(self.roi_tree_changed)
         self.settings_signalBlocker = QSignalBlocker(self.settings)
         self.settings_signalBlocker.unblock()
+
         self.save_ROI_pb.triggered.connect(self.save_ROI)
         self.load_ROI_pb.triggered.connect(lambda: self.load_ROI(None))
         self.clear_ROI_pb.triggered.connect(self.clear_ROI)
@@ -267,6 +270,7 @@ class ROIManager(QObject):
         self.update_roi_tree(roi)
         self.ROIs[roi.key()]=roi
         self.viewer_widget.plotItem.addItem(roi)  
+
 
     def makeROI1D(self,index,pos,**kwargs):
         """Convenience function to make custom ROI_1D
@@ -336,8 +340,8 @@ class ROIManager(QObject):
         roi_group.addChild(param)
         self.settings_signalBlocker.unblock()
         new_roi = self.makeROI(param)
-        [self.update_roi(new_roi,p) for p in putils.iter_children_params(param,filter_type=['group',])]        
         self.addROI(new_roi)
+        [self.update_roi(new_roi,p) for p in putils.iter_children_params(param,filter_type=['group',])]        
 
 
     def update_use_channel(self, channels: List[str], index=None):
@@ -358,7 +362,6 @@ class ROIManager(QObject):
                         selected=channels))   
                     
     def update_roi(self, roi:ROI, param):
-
         par = self.get_parameter(roi)
         roi.signalBlocker.reblock()
         parent_name = param.parent().opts['name']
@@ -407,20 +410,20 @@ class ROIManager(QObject):
         self.update_roi_tree(roi)
         roi.signalBlocker.unblock()
 
+
     def update_roi_pos(self,pos,param):
         if param.name() == 'x' or param.name() == 'left':
-            poss = pg.Point(param.value(), pos[1])
+            poss = Point(param.value(), pos[1])
         elif param.name() == 'y' or param.name() == 'right':         
-            poss = pg.Point(pos[0], param.value())                   
+            poss = Point(pos[0], param.value())                   
         return poss
     
     def get_parameter(self,roi):
-        if type(roi) == int:
+        if type(roi) is int:
             par =  self.settings.child(*('ROIs', roi_format(roi)))
         else:
             par = self.settings.child(*('ROIs', roi.key()))
         return par
-
 
     @Slot(type(ROI))
     def update_roi_tree(self, roi):
@@ -610,11 +613,10 @@ class ROISaver:
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
+    from pymodaq_gui.plotting.widgets import ImageWidget
     from pyqtgraph import PlotWidget
 
-    from pymodaq_gui.plotting.widgets import ImageWidget
-
-    # im = ImageWidget()
+    im = ImageWidget()
     im = PlotWidget()
     prog = ROIManager(im, '2D')
     widget = QtWidgets.QWidget()
