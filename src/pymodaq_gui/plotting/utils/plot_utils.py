@@ -14,7 +14,7 @@ from qtpy import QtGui, QtCore, QtWidgets
 from scipy.spatial import Delaunay as Triangulation
 
 from pymodaq_data import data as data_mod
-from pymodaq_gui.plotting.items.roi import RectROI,LinearROI,EllipseROI,CircularROI,ROI,pgROI
+from pymodaq_gui.plotting.items.roi import RectROI,LinearROI,EllipseROI,CircularROI,ROI,pgROI,pgLinearROI
 
 
 def make_dashed_pens(color: tuple, nstyle=3):
