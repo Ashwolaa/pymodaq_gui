@@ -28,7 +28,8 @@ from pymodaq_gui.plotting.data_viewers.viewer import ViewerBase
 from pymodaq_gui.managers.action_manager import ActionManager
 from pymodaq_gui.managers.parameter_manager import ParameterManager
 from pymodaq_data.post_treatment.process_to_scalar import DataProcessorFactory
-from pymodaq_gui.managers.roi_manager import SimpleRectROI, LinearROI
+from pymodaq_gui.plotting.items.roi import SimpleRectROI, LinearROI
+
 
 
 logger = set_logger(get_module_name(__file__))

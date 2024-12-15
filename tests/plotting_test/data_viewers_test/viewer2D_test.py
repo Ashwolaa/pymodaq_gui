@@ -74,10 +74,10 @@ def create_one_roi(prog, qtbot, roitype='RectROI'):
     QtWidgets.QApplication.processEvents()
     with qtbot.waitSignal(prog.view.roi_manager.new_ROI_signal, timeout=10000) as blocker:
         prog.view.roi_manager.add_roi_programmatically(roitype)
-    index_roi = blocker.args[0]
-    roi_type = blocker.args[1]
-
-    roi = prog.view.roi_manager.get_roi_from_index(index_roi)
+    roi_name = blocker.args[0]    
+    roi = prog.view.roi_manager.get_roi(roi_name)
+    index_roi = roi.index
+    roi_type = roi.type()
     QtWidgets.QApplication.processEvents()
     return index_roi, roi, roi_type
 
@@ -367,12 +367,12 @@ class TestROI:
         prog.show_data(data)
 
         index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='RectROI')
-        assert roi_type == 'RectROI'
-        assert index_roi == 0
+        assert roi.type() == 'RectROI'
+        assert roi.index == 0
 
         index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='EllipseROI')
-        assert roi_type == 'EllipseROI'
-        assert index_roi == 1
+        assert roi.type() == 'EllipseROI'
+        assert roi.index == 1
 
     def test_remove_roi(self, init_viewer2D):
         prog, qtbot = init_viewer2D
