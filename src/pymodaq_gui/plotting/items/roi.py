@@ -70,7 +70,6 @@ class ROI(pgROI):
     def mouseDoubleClickEvent(self,ev):
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             ev.accept()
-            print(self.display_state())
             self.sigDoubleClicked.emit(self,ev)
 
     def emit_index_signal(self):
@@ -143,23 +142,68 @@ class LinearROI(pgLinearROI):
     index_signal = Signal(int)
     sigCopyRequested = Signal(object)
     sigDoubleClicked = Signal(object,object)
+    sigRemoveRequested = Signal(object)
+    
     def __init__(self, index=0, pos=[0, 10], name = 'roi', **kwargs):
         super().__init__(values=pos, **kwargs)
         self.name = name
         self.index = index
         self.signalBlocker = QSignalBlocker(self)
-
-        self._menu = QtWidgets.QMenu()
-        self._menu.addAction('Copy ROI to clipboard', self.copy_clipboard)
+        self.menu = None
         self._clipboard = QtGui.QGuiApplication.clipboard()
 
     def copy_clipboard(self):
         info = plot_utils.RoiInfo.info_from_linear_roi(self)
         self._clipboard.setText(str(info.to_slices()))
 
+
+    def _emitRemoveRequest(self):
+        self.sigRemoveRequested.emit(self)
+
+    def _emitCopyRequest(self):
+        self.sigCopyRequested.emit(self)
+
+    def contextMenuEnabled(self):
+        return True
+    
+
+    def mouseClickEvent(self, ev):
+        if ev.button() == QtCore.Qt.MouseButton.RightButton and self.contextMenuEnabled():
+            self.raiseContextMenu(ev)
+            ev.accept()
+        elif self.acceptedMouseButtons() & ev.button():
+            ev.accept()
+            self.sigClicked.emit(self, ev)
+        else:
+            ev.ignore()
+
+
+    def raiseContextMenu(self, ev):
+        menu = self.getMenu()
+        menu = self.scene().addParentContextMenus(self, menu, ev)
+        pos = ev.screenPos()
+        menu.popup(QtCore.QPoint(int(pos.x()), int(pos.y())))
+
+    def getMenu(self):
+        if self.menu is None:
+            self.menu = QtWidgets.QMenu()
+            self.menu.setTitle(translate("ROI", "ROI"))
+            self.menu.addAction('Copy ROI to clipboard', self.copy_clipboard)            
+            self.menu.addAction("Copy ROI",self._emitCopyRequest)
+            self.menu.addAction("Remove ROI",self._emitRemoveRequest)       
+        return self.menu
+    
     def contextMenuEvent(self, event):
-        if self._menu is not None:
-            self._menu.exec(event.screenPos())
+        if self.menu is not None:
+            self.menu.exec(event.screenPos())
+
+    def mouseDoubleClickEvent(self,ev):
+        if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+            ev.accept()
+            self.sigDoubleClicked.emit(self,ev)
+
+    def emit_index_signal(self):
+        self.index_signal.emit(self.index)
 
     def pos(self) -> Tuple[float, float]:
         return self.getRegion()
