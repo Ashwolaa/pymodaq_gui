@@ -82,6 +82,19 @@ def create_one_roi(prog, qtbot, roitype='RectROI'):
     return index_roi, roi, roi_type
 
 
+def copy_one_roi(prog, qtbot, roi ):
+    prog.view.get_action('roi').trigger()
+    QtWidgets.QApplication.processEvents()
+    with qtbot.waitSignal(prog.view.roi_manager.new_ROI_signal, timeout=10000) as blocker:
+        prog.view.roi_manager.copyROI(roi)
+    roi_name = blocker.args[0]    
+    roi = prog.view.roi_manager.get_roi(roi_name)
+    index_roi = roi.index
+    roi_type = roi.type()
+    QtWidgets.QApplication.processEvents()
+    return index_roi, roi, roi_type
+
+
 class TestImageFactory:
     @pytest.mark.parametrize('item_type', ['uniform', 'spread'])
     def test_create_image(self, init_qt, item_type):
@@ -380,6 +393,23 @@ class TestROI:
         prog.show_data(data)
 
         index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='RectROI')
+
+        prog.view.roi_manager.remove_roi_programmatically(index_roi)
+        QtWidgets.QApplication.processEvents()
+
+
+    def test_copy_roi(self, init_viewer2D):
+        prog, qtbot = init_viewer2D
+        data = init_data()
+        prog.show_data(data)
+
+        index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='RectROI')
+        index_roi_copied, roi_copied, roi_type_copied = copy_one_roi(prog, qtbot, roi)
+
+        assert len(prog.view.roi_manager.ROIs)==2
+        assert roi.type() == roi_type_copied
+        assert roi.getState() == roi_copied.getState()
+
 
         prog.view.roi_manager.remove_roi_programmatically(index_roi)
         QtWidgets.QApplication.processEvents()
