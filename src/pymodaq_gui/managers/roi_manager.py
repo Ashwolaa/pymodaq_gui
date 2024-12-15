@@ -264,6 +264,7 @@ class ROIManager(QObject):
         return roi
 
     def addROI(self,roi):
+        # Connection roi signals to relevant function
         roi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
         roi.sigRegionChangeFinished.connect(self.update_roi_tree)
         roi.sigRemoveRequested.connect(self.removeROI)
@@ -271,18 +272,20 @@ class ROIManager(QObject):
         roi.setAcceptedMouseButtons(QtCore.Qt.MouseButton.LeftButton) 
         roi.sigDoubleClicked.connect(self.expand_roi_tree)
 
-
+        # Updating tree
         self.update_roi_tree(roi)
-        self.ROIs[roi.key()]=roi
+        # Adding to dictionnary
+        self.ROIs[roi.key()]=roi 
+        # Adding to viewer
         self.viewer_widget.plotItem.addItem(roi)  
-
+        # Emitting signal
         self.new_ROI_signal.emit(roi.key())
 
     def expand_roi_tree(self,roi,):
+        # Expand roi tree when roi gets double selected
         par = self.settings.child(*('ROIs', roi_format(roi.index)))
         isExpanded = not par.opts['expanded']    
         par.setOpts(expanded=isExpanded)                
-        # roi.selected(self.get_pen_from_param(roi),isExpanded)      
 
 
     def makeROI1D(self,index,pos,**kwargs):
@@ -352,7 +355,6 @@ class ROIManager(QObject):
         roi_group = self.settings.child('ROIs')
         #Copy parameter and edit name
         param_roi = self.get_parameter(roi)
-
         param = param_roi.saveState() # Transforming parameter in dict
         param['name'] = roi_format(index) # Changing name   
         param = Parameter.create(**param) # Transforming dict in parameter
@@ -362,8 +364,9 @@ class ROIManager(QObject):
         new_roi = self.makeROI(param)
 
         param_to_update = putils.iter_children_params(param_roi,[],filter_name=('roi_type',),filter_type=('group',)) # Parameters to update
-        [self.update_roi(new_roi,p) for p in reversed(param_to_update)]     
+        # [self.update_roi(new_roi,p) for p in reversed(param_to_update)]     
         self.addROI(new_roi)
+        [self.update_roi(new_roi,p) for p in reversed(param_to_update)]     
 
 
     def update_use_channel(self, channels: List[str], index=None):
