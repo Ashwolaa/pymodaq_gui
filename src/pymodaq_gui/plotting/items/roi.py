@@ -48,6 +48,12 @@ class ROI(pgROI):
     def contextMenuEnabled(self):
         return True
     
+    def mouseClickEvent(self,ev):
+        super().mouseClickEvent(ev)
+        if ev.button() == QtCore.Qt.MouseButton.MiddleButton:
+            ev.accept()
+            self._emitRemoveRequest()
+
     def raiseContextMenu(self, ev):
         menu = self.getMenu()
         menu = self.scene().addParentContextMenus(self, menu, ev)
@@ -143,7 +149,7 @@ class LinearROI(pgLinearROI):
     sigCopyRequested = Signal(object)
     sigDoubleClicked = Signal(object,object)
     sigRemoveRequested = Signal(object)
-    
+
     def __init__(self, index=0, pos=[0, 10], name = 'roi', **kwargs):
         super().__init__(values=pos, **kwargs)
         self.name = name
@@ -168,12 +174,16 @@ class LinearROI(pgLinearROI):
     
 
     def mouseClickEvent(self, ev):
+        super().mouseClickEvent(ev)
         if ev.button() == QtCore.Qt.MouseButton.RightButton and self.contextMenuEnabled():
             self.raiseContextMenu(ev)
             ev.accept()
         elif self.acceptedMouseButtons() & ev.button():
             ev.accept()
             self.sigClicked.emit(self, ev)
+        elif ev.button() == QtCore.Qt.MouseButton.MiddleButton:
+            ev.accept()
+            self._emitRemoveRequest()
         else:
             ev.ignore()
 

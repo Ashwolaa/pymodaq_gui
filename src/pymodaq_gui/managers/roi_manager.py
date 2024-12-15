@@ -271,7 +271,6 @@ class ROIManager(QObject):
         roi.sigCopyRequested.connect(self.copyROI)        
         roi.setAcceptedMouseButtons(QtCore.Qt.MouseButton.LeftButton) 
         roi.sigDoubleClicked.connect(self.expand_roi_tree)
-
         # Updating tree
         self.update_roi_tree(roi)
         # Adding to dictionnary
