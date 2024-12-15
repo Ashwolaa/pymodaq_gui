@@ -268,6 +268,9 @@ class ROIManager(QObject):
         roi.sigRegionChangeFinished.connect(self.update_roi_tree)
         roi.sigRemoveRequested.connect(self.removeROI)
         roi.sigCopyRequested.connect(self.copyROI)        
+        roi.setAcceptedMouseButtons(QtCore.Qt.MouseButton.LeftButton) 
+        roi.sigDoubleClicked.connect(self.expand_roi_tree)
+
 
         self.update_roi_tree(roi)
         self.ROIs[roi.key()]=roi
@@ -275,6 +278,11 @@ class ROIManager(QObject):
 
         self.new_ROI_signal.emit(roi.key())
 
+    def expand_roi_tree(self,roi,):
+        par = self.settings.child(*('ROIs', roi_format(roi.index)))
+        isExpanded = not par.opts['expanded']    
+        par.setOpts(expanded=isExpanded)                
+        # roi.selected(self.get_pen_from_param(roi),isExpanded)      
 
 
     def makeROI1D(self,index,pos,**kwargs):
