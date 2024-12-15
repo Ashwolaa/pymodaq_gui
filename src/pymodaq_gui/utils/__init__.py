@@ -7,4 +7,4 @@ from .widgets.qled import QLED
 from .widgets.spinbox import QSpinBox_ro
 from .custom_app import CustomApp
 
-
+from .utils import set_dark_palette

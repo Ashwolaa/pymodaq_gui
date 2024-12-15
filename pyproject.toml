@@ -40,7 +40,6 @@ dependencies = [
     "pint",
     "pyqtgraph>=0.12",
     "python-dateutil",
-    "qdarkstyle",
     "qtpy",
     "scipy",
     "setuptools>=60",

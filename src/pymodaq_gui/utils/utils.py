@@ -18,6 +18,34 @@ def first_available_integer(liste):
         i += 1
     return i
 
+def set_dark_palette(app):
+    from qtpy.QtGui import QPalette, QColor
+    app.setStyle("Fusion")
+
+    palette = QPalette()
+    palette.setColor(QPalette.ColorRole.Window, QColor(53,53,53))
+    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Base, QColor(42,42,42))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Dark, QColor(35,35,35))
+    palette.setColor(QPalette.ColorRole.Shadow, QColor(20,20,20))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.black)
+    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+    palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+    palette.setColor(QPalette.ColorRole.HighlightedText, QColor(127,127,127))
+    palette.setColor(QPalette.Disabled, QPalette.ColorRole.ButtonText, Qt.GlobalColor.darkGray)
+    palette.setColor(QPalette.Disabled, QPalette.ColorRole.WindowText, Qt.GlobalColor.darkGray)
+    palette.setColor(QPalette.Disabled, QPalette.ColorRole.Text, Qt.GlobalColor.darkGray)
+    palette.setColor(QPalette.Disabled, QPalette.ColorRole.Light, QColor(53, 53, 53))
+
+    app.setPalette(palette)
 
 def clickable(widget):
     class Filter(QObject):
@@ -143,16 +171,14 @@ def pngbinary2Qlabel(databinary, scale_height: int = None):
 def start_qapplication() -> QtWidgets.QApplication:
     app = QtWidgets.QApplication(sys.argv)
     if config('style', 'darkstyle'):
-        import qdarkstyle
-        app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api=os.environ['QT_API']))
+        set_dark_palette(app)
     return app
 
 
 def mkQApp(name: str):
     app = mkQApppg(name)
     if config('style', 'darkstyle'):
-        import qdarkstyle
-        app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api=os.environ['QT_API']))
+        set_dark_palette(app)
     return app
 
 
