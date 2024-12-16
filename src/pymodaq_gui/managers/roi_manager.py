@@ -60,7 +60,7 @@ class ROIScalableGroup(GroupParameter):
         self.addChild(self.makeChild(newindex,typ))
 
 
-    def makeChild(self,index,roi_type):
+    def makeChild(self, index, roi_type):
         child = {'name': ROIManager.roi_format(index), 'type': 'bool','value':True, 'removable': True, 'renamable': False, 'expanded': False,'context':['Copy',]}
         if self.roi_type =='2D':
             child['children'] = ROIScalableGroup.make_ROIParam2D(roi_type,index)
@@ -89,7 +89,7 @@ class ROIScalableGroup(GroupParameter):
         return [{'title': 'Math type:', 'name': 'math_function', 'type': 'list',
                              'limits': data_processors.functions_filtered(f'Data{dim}')},]
     @staticmethod    
-    def make_ROIParam2D(roi_type,index):
+    def make_ROIParam2D(roi_type, index):
             children = []    
             children.extend([{'title': 'Type', 'name': 'roi_type', 'type': 'list', 'value': roi_type, 'limits':['RectROI','EllipseROI','CircularROI'], 'readonly': False,}])
             children.extend(ROIScalableGroup.makeChannelsParam('2D'))
@@ -112,7 +112,7 @@ class ROIScalableGroup(GroupParameter):
             return children
 
     @staticmethod    
-    def make_ROIParam1D(roi_type,index):
+    def make_ROIParam1D(roi_type, index):
             children = []    
             children.extend(ROIScalableGroup.makeChannelsParam('1D'))
             children.extend(ROIScalableGroup.makeMathParam('1D'))
@@ -245,7 +245,7 @@ class ROIManager(QObject):
                 if data=='Copy':
                     self.copy_ROI(self.ROIs[param.name()])                    
 
-    def make_ROI(self,par,isCopy=False):
+    def make_ROI(self, par,):
         newindex = int(par.name()[-2:])
         pos = self.viewer_widget.plotItem.vb.viewRange()
         if self.ROI_type == '1D':
@@ -263,7 +263,7 @@ class ROIManager(QObject):
 
         return roi
 
-    def add_ROI(self,roi):
+    def add_ROI(self, roi):
         # Connection roi signals to relevant function
         roi.sigRegionChangeFinished.connect(lambda: self.roi_changed.emit())
         roi.sigRegionChangeFinished.connect(self.update_roi_tree)
@@ -280,14 +280,14 @@ class ROIManager(QObject):
         # Emitting signal
         self.new_ROI_signal.emit(roi.key())
 
-    def expand_roi_tree(self,roi,):
+    def expand_roi_tree(self, roi,):
         # Expand roi tree when roi gets double selected
         par = self.settings.child(*('ROIs', roi_format(roi.index)))
         isExpanded = not par.opts['expanded']    
         par.setOpts(expanded=isExpanded)                
 
 
-    def make_ROI1D(self,index,pos,**kwargs):
+    def make_ROI1D(self, index, pos, **kwargs):
         """Convenience function to make custom ROI_1D
 
         Args:
@@ -302,7 +302,7 @@ class ROIManager(QObject):
         roi.setOpacity(0.2)
         return roi                    
 
-    def make_ROI2D(self,roi_type,index,pos,size,**kwargs):
+    def make_ROI2D(self, roi_type, index, pos, size, **kwargs):
         """Convenience function to make custom ROI_2D
 
         Args:
@@ -326,7 +326,7 @@ class ROIManager(QObject):
 
         return roi
     
-    def remove_ROI(self,roi):
+    def remove_ROI(self, roi):
         """Function to remove roi from dict and widget
 
         Args:
@@ -343,7 +343,7 @@ class ROIManager(QObject):
         self.remove_ROI_signal.emit(roi.key())
         self.emit_colors()
 
-    def copy_ROI(self,roi:ROI):
+    def copy_ROI(self, roi:ROI):
         """Method to copy a ROI and add it to the parameter tree and to the viewer widget
         The method extracts the parameters of the copied ROI, create a new parameter, a new ROI and update it with the settings from the copied parameter
         Args:
@@ -435,14 +435,14 @@ class ROIManager(QObject):
         roi.signalBlocker.unblock()
 
 
-    def update_roi_pos(self,pos,param):
+    def update_roi_pos(self, pos, param):
         if param.name() == 'x' or param.name() == 'left':
             poss = Point(param.value(), pos[1])
         elif param.name() == 'y' or param.name() == 'right':         
             poss = Point(pos[0], param.value())                   
         return poss
     
-    def get_parameter(self,roi):
+    def get_parameter(self, roi):
         if type(roi) is int:
             par =  self.settings.child(*('ROIs', roi_format(roi)))
         else:
