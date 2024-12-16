@@ -86,7 +86,7 @@ def copy_one_roi(prog, qtbot, roi ):
     prog.view.get_action('roi').trigger()
     QtWidgets.QApplication.processEvents()
     with qtbot.waitSignal(prog.view.roi_manager.new_ROI_signal, timeout=10000) as blocker:
-        prog.view.roi_manager.copyROI(roi)
+        prog.view.roi_manager.copy_ROI(roi)
     roi_name = blocker.args[0]    
     roi = prog.view.roi_manager.get_roi(roi_name)
     index_roi = roi.index
