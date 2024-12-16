@@ -302,6 +302,9 @@ class Filter2DFromRois(Filter):
         self.axes = (0, 1)
         self._ROIs = roi_manager.ROIs
 
+    def set_graph_items(self, graph_items):
+        self._graph_items = graph_items
+
     def _filter_data(self, dwa: data_mod.DataRaw) -> DataToExport:
         dte = DataToExport('ROI')
         if dwa is not None:
@@ -321,16 +324,6 @@ class Filter2DFromRois(Filter):
             except Exception as e:
                 logger.warning(f'Issue with the ROI: {str(e)}')
         return dte
-
-    def get_slices_from_roi(self, roi: RectROI, data_shape: tuple) -> Tuple[slice, slice]:
-        x, y = roi.pos().x(), roi.pos().y()
-        width, height = roi.size().x(), roi.size().y()
-        size_y, size_x = data_shape
-        ind_x_min = int(min(max(x, 0), size_x))
-        ind_y_min = int(min(max(y, 0), size_y))
-        ind_x_max = int(max(0, min(x+width, size_x)))
-        ind_y_max = int(max(0, min(y+height, size_y)))
-        return slice(ind_y_min,ind_y_max), slice(ind_x_min, ind_x_max)
 
     def get_xydata_from_roi(self, roi: RectROI, dwa: DataWithAxes, math_function: str) -> DataToExport:
         dte = DataToExport(roi.name)
@@ -356,10 +349,10 @@ class Filter2DFromRois(Filter):
                 sub_data_ver = DataFromRoi('ver', distribution='spread', data=[data_V], axes=[y_axis])
                 math_data = DataFromRoi('int', data=int_data)
             else:
-                slices = self.get_slices_from_roi(roi, dwa.shape)
+                slices = roi.getArraySlice(dwa.data[0], self._graph_items['red'])[0]  # Maximal slicing, contains edges
                 sub_data: DataFromRoi = dwa.isig[slices[0], slices[1]]
-                sub_data_hor = sub_data.mean(0)
-                sub_data_ver = sub_data.mean(1)
+                sub_data_hor = sub_data.mean(axis=0)
+                sub_data_ver = sub_data.mean(axis=1)
                 math_data = data_processors.get(math_function).process(sub_data)
 
             sub_data_hor.name = 'hor'
@@ -392,6 +385,17 @@ class Filter2DFromRois(Filter):
     # def data_from_roi(self, data, roi):
     #     data, coords = roi.getArrayRegion(data, self._graph_item, self.axes, returnMappedCoords=True)
     #     return data, coords
+
+    # def get_slices_from_roi(self, roi: RectROI, data_shape: tuple) -> Tuple[slice, slice]:
+    #     x, y = roi.pos().x(), roi.pos().y()
+    #     width, height = roi.size().x(), roi.size().y()
+    #     size_y, size_x = data_shape
+    #     ind_x_min = int(min(max(x, 0), size_x))
+    #     ind_y_min = int(min(max(y, 0), size_y))
+    #     ind_x_max = int(max(0, min(x+width, size_x)))
+    #     ind_y_max = int(max(0, min(y+height, size_y)))
+    #     return slice(ind_y_min,ind_y_max), slice(ind_x_min, ind_x_max)
+
 
     def get_xydata_spread(self, data, roi):
         xvals = []
