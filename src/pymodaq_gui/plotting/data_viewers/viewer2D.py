@@ -17,7 +17,9 @@ from pymodaq_utils.logger import set_logger, get_module_name
 from pymodaq_data.data import (Axis, DataToExport, DataFromRoi, DataRaw,
                                DataDistribution, DataWithAxes)
 
-from pymodaq_gui.managers.roi_manager import ROIManager, SimpleRectROI
+from pymodaq_gui.managers.roi_manager import ROIManager
+from pymodaq_gui.plotting.items.roi import SimpleRectROI
+
 from pymodaq_gui.managers.action_manager import ActionManager
 from pymodaq_gui.plotting.widgets import ImageWidget
 from pymodaq_gui.plotting.data_viewers.viewer import ViewerBase
@@ -498,8 +500,8 @@ class View2D(ActionManager, QtCore.QObject):
     def show_legend(self, show=True):
         self.data_displayer.show_legend(show)
 
-    @Slot(int, str, str)
-    def add_roi_displayer(self, index, roi_type='', roi_name=''):
+    @Slot(str)
+    def add_roi_displayer(self, roi_name=''):
         color = self.roi_manager.ROIs[roi_name].color
         self.lineout_viewers['hor'].view.add_data_displayer(roi_name, make_dashed_pens(color))
         self.lineout_viewers['ver'].view.add_data_displayer(roi_name, make_dashed_pens(color))
@@ -511,10 +513,11 @@ class View2D(ActionManager, QtCore.QObject):
         self.lineout_viewers['ver'].view.remove_data_displayer(roi_name)
         self.lineout_viewers['int'].view.remove_data_displayer(roi_name)
 
-    @Slot(int, str, str)
-    def update_roi_channels(self, index, roi_type=''):
+    @Slot(str)
+    def update_roi_channels(self, roi_name):
         """Update the use_channel setting each time a ROI is added"""
-        self.roi_manager.update_use_channel(self.data_displayer.labels.copy())
+        roi = self.roi_manager.get_roi(roi_name)
+        self.roi_manager.update_use_channel(self.data_displayer.labels.copy(),roi.index)
 
     def prepare_ui(self):
         self.ROIselect.setVisible(False)

@@ -7,7 +7,7 @@ from pymodaq_data import data as data_mod
 from pymodaq_gui.plotting.data_viewers.viewer2D import Viewer2D
 from pymodaq_gui.plotting.data_viewers import viewer2D as v2d
 
-from pymodaq_gui.managers.roi_manager import ROIManager
+from pymodaq_gui.managers.roi_manager import ROIManager,roi_format
 import pymodaq_gui.plotting.utils.plot_utils as plot_utils
 from pathlib import Path
 import pytest
@@ -74,10 +74,23 @@ def create_one_roi(prog, qtbot, roitype='RectROI'):
     QtWidgets.QApplication.processEvents()
     with qtbot.waitSignal(prog.view.roi_manager.new_ROI_signal, timeout=10000) as blocker:
         prog.view.roi_manager.add_roi_programmatically(roitype)
-    index_roi = blocker.args[0]
-    roi_type = blocker.args[1]
+    roi_name = blocker.args[0]    
+    roi = prog.view.roi_manager.get_roi(roi_name)
+    index_roi = roi.index
+    roi_type = roi.type()
+    QtWidgets.QApplication.processEvents()
+    return index_roi, roi, roi_type
 
-    roi = prog.view.roi_manager.get_roi_from_index(index_roi)
+
+def copy_one_roi(prog, qtbot, roi ):
+    prog.view.get_action('roi').trigger()
+    QtWidgets.QApplication.processEvents()
+    with qtbot.waitSignal(prog.view.roi_manager.new_ROI_signal, timeout=10000) as blocker:
+        prog.view.roi_manager.copy_ROI(roi)
+    roi_name = blocker.args[0]    
+    roi = prog.view.roi_manager.get_roi(roi_name)
+    index_roi = roi.index
+    roi_type = roi.type()
     QtWidgets.QApplication.processEvents()
     return index_roi, roi, roi_type
 
@@ -367,12 +380,12 @@ class TestROI:
         prog.show_data(data)
 
         index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='RectROI')
-        assert roi_type == 'RectROI'
-        assert index_roi == 0
+        assert roi.type() == 'RectROI'
+        assert roi.index == 0
 
         index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='EllipseROI')
-        assert roi_type == 'EllipseROI'
-        assert index_roi == 1
+        assert roi.type() == 'EllipseROI'
+        assert roi.index == 1
 
     def test_remove_roi(self, init_viewer2D):
         prog, qtbot = init_viewer2D
@@ -384,6 +397,23 @@ class TestROI:
         prog.view.roi_manager.remove_roi_programmatically(index_roi)
         QtWidgets.QApplication.processEvents()
 
+
+    def test_copy_roi(self, init_viewer2D):
+        prog, qtbot = init_viewer2D
+        data = init_data()
+        prog.show_data(data)
+
+        index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='RectROI')
+        index_roi_copied, roi_copied, roi_type_copied = copy_one_roi(prog, qtbot, roi)
+
+        assert len(prog.view.roi_manager.ROIs)==2
+        assert roi.type() == roi_type_copied
+        assert roi.getState() == roi_copied.getState()
+
+
+        prog.view.roi_manager.remove_roi_programmatically(index_roi)
+        QtWidgets.QApplication.processEvents()
+
     def test_update_color_roi(self, init_viewer2D):
         prog, qtbot = init_viewer2D
         data = init_data()
@@ -391,7 +421,7 @@ class TestROI:
 
         index_roi, roi, roi_type = create_one_roi(prog, qtbot, roitype='RectROI')
 
-        prog.view.roi_manager.settings.child('ROIs', ROIManager.roi_format(index_roi), 'Color').setValue('b')
+        prog.view.roi_manager.settings.child('ROIs', roi_format(index_roi), 'Color').setValue('b')
         roi = prog.view.roi_manager.get_roi_from_index(index_roi)
         QtWidgets.QApplication.processEvents()
         assert roi.pen == mkPen('b')
@@ -414,15 +444,15 @@ class TestROI:
         assert len(data_to_export.get_data_from_dim('data1D')) != 0
         assert len(data_to_export.get_data_from_dim('data0D')) != 0
 
-        assert f'Hlineout_{ROIManager.roi_format(index_roi)}' in data_to_export.get_names()
-        assert f'Vlineout_{ROIManager.roi_format(index_roi)}' in \
+        assert f'Hlineout_{roi_format(index_roi)}' in data_to_export.get_names()
+        assert f'Vlineout_{roi_format(index_roi)}' in \
                data_to_export.get_names('data1D')
-        assert f'Integrated_{ROIManager.roi_format(index_roi)}' in \
+        assert f'Integrated_{roi_format(index_roi)}' in \
                data_to_export.get_names('data0D')
 
-        hlineout = data_to_export.get_data_from_name(f'Hlineout_{ROIManager.roi_format(index_roi)}')
-        vlineout = data_to_export.get_data_from_name(f'Vlineout_{ROIManager.roi_format(index_roi)}')
-        intlineout = data_to_export.get_data_from_name(f'Integrated_{ROIManager.roi_format(index_roi)}')
+        hlineout = data_to_export.get_data_from_name(f'Hlineout_{roi_format(index_roi)}')
+        vlineout = data_to_export.get_data_from_name(f'Vlineout_{roi_format(index_roi)}')
+        intlineout = data_to_export.get_data_from_name(f'Integrated_{roi_format(index_roi)}')
 
         assert np.any(hlineout.data[0] == approx(np.mean(data[0], 0)))
         assert np.any(vlineout.data[0] == approx(np.mean(data[0], 1)))
@@ -445,9 +475,9 @@ class TestROI:
         assert len(data_to_export.get_data_from_dim('data1D')) != 0
         assert len(data_to_export.get_data_from_dim('data0D')) != 0
 
-        assert f'Hlineout_{ROIManager.roi_format(index_roi)}' in data_to_export.get_names('data1D')
-        assert f'Vlineout_{ROIManager.roi_format(index_roi)}' in data_to_export.get_names('data1D')
-        assert f'Integrated_{ROIManager.roi_format(index_roi)}' in data_to_export.get_names('data0D')
+        assert f'Hlineout_{roi_format(index_roi)}' in data_to_export.get_names('data1D')
+        assert f'Vlineout_{roi_format(index_roi)}' in data_to_export.get_names('data1D')
+        assert f'Integrated_{roi_format(index_roi)}' in data_to_export.get_names('data0D')
 
 
     def test_show_roi(self, init_viewer2D):

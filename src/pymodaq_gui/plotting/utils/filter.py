@@ -242,29 +242,19 @@ class Filter1DFromRois(Filter):
             axis = data.get_axis_from_index(0, create=False)[0]
             if axis is not None:
                 self.update_axis(axis)
-            if data is not None:
+            if data is not None:                                
                 for roi_key, roi in self._ROIs.items():
-                    if self._roi_settings['ROIs', roi_key, 'use_channel'] == 'All':
-                        data_index = list(range(len(data.labels)))
-                    else:
-                        try:
-                            data_index = [data.labels.index(self._roi_settings['ROIs', roi_key,
-                                          'use_channel'])]
-                        except ValueError:
-                            data_index = [0]
+                    sub_data = data.deepcopy()                
+                    labels = self._roi_settings['ROIs', roi_key, 'use_channel']['selected']
+                    if labels:
+                        sub_data.data = [sub_data[sub_data.labels.index(label)] for label in labels]
+                        sub_data.labels = [label for label in labels]                
                     dte_tmp = self.get_data_from_roi(roi, self._roi_settings.child('ROIs', roi_key),
-                                                     data)
-                    if self._roi_settings['ROIs', roi_key, 'use_channel'] == 'All':
-                        dte.append(dte_tmp.data)
-                    else:
-                        for index in data_index:
-                            for dwa in dte_tmp.data:
-                                dte.append(dwa.pop(index))
-
+                                                                    sub_data)
+                    dte.append(dte_tmp)
         except Exception as e:
-            pass
-        finally:
-            return dte
+            logger.warning(f'Issue with the ROI: {str(e)}')
+        return dte
 
     def get_data_from_roi(self, roi: LinearROI,  roi_param: Parameter, data: data_mod.DataWithAxes) -> DataToExport:
         if data is not None:
@@ -318,17 +308,14 @@ class Filter2DFromRois(Filter):
             try:
                 labels = []
                 for roi_key, roi in self._ROIs.items():
-                    label = self._roi_settings['ROIs', roi_key, 'use_channel']
-                    if label is not None:
-                        if label != 'All':
-                            sub_data = dwa.deepcopy()
-                            sub_data.data = [dwa[dwa.labels.index(label)]]
-                            sub_data.labels = [label]
-                        else:
-                            sub_data = dwa
+                    labels = self._roi_settings['ROIs', roi_key, 'use_channel']['selected']
+                    sub_data = dwa.deepcopy()
+                    if labels:
+                        sub_data.data = [dwa[dwa.labels.index(label)] for label in labels]
+                        sub_data.labels = [label for label in labels]
                         dte_temp = self.get_xydata_from_roi(roi, sub_data,
-                                                            self._roi_settings['ROIs',
-                                                            roi_key, 'math_function'])
+                                                                self._roi_settings['ROIs',
+                                                                roi_key, 'math_function'])
 
                         dte.append(dte_temp)
             except Exception as e:

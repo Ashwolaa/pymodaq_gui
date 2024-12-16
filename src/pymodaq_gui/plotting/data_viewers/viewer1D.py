@@ -305,8 +305,8 @@ class View1D(ActionManager, QObject):
         if displayer is not None:
             displayer.update_display_items()
 
-    @Slot(int, str, str)
-    def add_roi_displayer(self, index, roi_type='', roi_name=''):
+    @Slot(str)
+    def add_roi_displayer(self, roi_name=''):
         color = self.roi_manager.ROIs[roi_name].color
         self.lineout_viewers.view.add_data_displayer(
             roi_name, make_dashed_pens(color, self.data_displayer.Ndata))
@@ -385,10 +385,11 @@ class View1D(ActionManager, QObject):
         except Exception as e:
             logger.exception(str(e))
 
-    @Slot(int, str)
-    def update_roi_channels(self, index, roi_type=''):
+    @Slot(str)
+    def update_roi_channels(self, roi_name):
         """Update the use_channel setting each time a ROI is added"""
-        self.roi_manager.update_use_channel(self.data_displayer.labels.copy())
+        roi = self.roi_manager.get_roi(roi_name)
+        self.roi_manager.update_use_channel(self.data_displayer.labels.copy(),roi.index)
 
     def setup_widgets(self):
         self.parent_widget.setLayout(QtWidgets.QVBoxLayout())

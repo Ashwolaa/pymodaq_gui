@@ -12,6 +12,12 @@ from pyqtgraph import mkQApp as mkQApppg
 config = Config()
 logger = set_logger(get_module_name(__file__))
 
+def first_available_integer(liste):
+    i = 0
+    while i in liste:
+        i += 1
+    return i
+
 def set_dark_palette(app):
     from qtpy.QtGui import QPalette, QColor
     app.setStyle("Fusion")
