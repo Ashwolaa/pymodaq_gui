@@ -592,7 +592,11 @@ class ROIManager(QObject):
                 self.settings_signalBlocker.unblock()
             roi.setPos(pos)
         elif param.name() == "angle":
-            roi.setAngle(param.value(), center=[0.5, 0.5])
+            self.settings_signalBlocker.reblock()                        
+            angle = param.value() - int(param.value()/360) * 360
+            par.setValue(angle)
+            self.settings_signalBlocker.unblock()                        
+            roi.setAngle(angle, center=[0.5, 0.5])
         elif param.name() == "zlevel":
             roi.setZValue(param.value())
         elif param.name() == "width":
