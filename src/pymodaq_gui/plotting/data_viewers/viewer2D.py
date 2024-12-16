@@ -1053,7 +1053,7 @@ def main(data_distribution='uniform'):
         data_to_plot = generate_uniform_data()
 
     elif data_distribution == 'spread':
-        data_spread = np.load('../../../resources/triangulation_data.npy')
+        data_spread = np.load('../../../resources/triangulation_data.npy') # IMPORT TO BE FIXED
         data_to_plot = DataRaw(name='mydata', distribution='spread', data=[data_spread[:,2]],
                                        nav_indexes=(0,),
                                        axes=[Axis('xaxis', units='xpxl', data=data_spread[:,0], index=0, spread_order=0),
@@ -1120,4 +1120,4 @@ if __name__ == '__main__':  # pragma: no cover
 
     #main_view()
     main('uniform')
-    #main('spread')
+    # main('spread')
