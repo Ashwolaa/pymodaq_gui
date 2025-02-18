@@ -12,15 +12,14 @@ from pathlib import Path
 
 
 def create_icon(icon_name: Union[str, Path]):
-
+    icon = QtGui.QIcon()
     if Path(icon_name).is_file(): # Test if icon is in path
-        icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(icon_name), QtGui.QIcon.Normal, QtGui.QIcon.Off)
     else:
         pixmap = QtGui.QPixmap(f":/icons/Icon_Library/{icon_name}.png") # Test if icon is in pymodaq's library
         if pixmap.isNull(): 
-            if hasattr(QtGui.QIcon,'ThemeIcon') and hasattr(QtGui.QIcon.ThemeIcon,icon_name): # Test if icon is in Qt's library
-                icon = QtGui.QIcon.fromTheme(getattr(QtGui.QIcon.ThemeIcon,icon_name))
+            if hasattr(QtGui.QIcon,'ThemeIcon') and hasattr(QtGui.QIcon.ThemeIcon, icon_name): # Test if icon is in Qt's library
+                icon = QtGui.QIcon.fromTheme(getattr(QtGui.QIcon.ThemeIcon, icon_name))
         else:
             icon = QtGui.QIcon()
             icon.addPixmap(QtGui.QPixmap(pixmap), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -89,14 +88,13 @@ def addaction(name: str = '', icon_name: Union[str, Path, QtGui.QIcon]= '', tip=
     enabled: bool
         set the enabled state
     """
-    
-    if icon_name != '':
-        if isinstance(icon_name, QtGui.QIcon):    
-            action = QAction(icon_name, name, None)
-        else:            
-            action = QAction(create_icon(icon_name), name, None)
-    else:
+
+    if icon_name is None or icon_name == '':
         action = QAction(name)
+    elif isinstance(icon_name, QtGui.QIcon):
+        action = QAction(icon_name, name, None)
+    else:
+        action = QAction(create_icon(icon_name), name, None)
 
     if slot is not None:
         action.connect_to(slot)
