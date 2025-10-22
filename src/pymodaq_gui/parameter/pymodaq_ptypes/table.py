@@ -3,8 +3,6 @@ Table parameter wrapping ManagedTableWidget.
 """
 
 from pyqtgraph.parametertree.parameterTypes import WidgetParameterItem, SimpleParameter
-
-# from managed_table_widget import ManagedTableWidget
 from pymodaq_gui.utils.widgets.managed_table import ManagedTableWidget
 
 class TableParameterItem(WidgetParameterItem):
@@ -48,7 +46,7 @@ class TableParameterItem(WidgetParameterItem):
     def widgetValueChanged(self, data):
         """Handle widget value changes."""
         try:
-            self.param.setValue(data)
+            self.param.setValue(data)            
         except Exception as e:
             print(f"Error updating parameter: {e}")
 
@@ -66,6 +64,7 @@ class TableParameterItem(WidgetParameterItem):
 
         if "value" in opts:
             self.widget.setValue(opts["value"])
+            self.widget.table.resizeColumnsToContents()
 
         if "delegate" in opts:
             delegate = opts["delegate"]()
@@ -93,7 +92,7 @@ class TableParameter(SimpleParameter):
             columns = opts.get("columns", ["Column 1", "Column 2", "Column 3"])
             opts["value"] = [[""] * len(columns) for _ in range(rows)]
 
-        opts["expanded"] = False
+        opts["expanded"] = True
         super().__init__(**opts)
 
     def valueIsDefault(self):

@@ -214,7 +214,7 @@ class ParameterEx(ParameterManager):
         {'title': 'Tables:', 'name': 'tables', 'type': 'group', 'children': [
             {'title': 'Table widget', 'name': 'tablewidget', 'type': 'table_dict', 'value':
                 OrderedDict(key1='data1', key2=24), 'header': ['keys', 'limits'], 'height': 100},
-                # create_comprehensive_table(),
+                create_comprehensive_table(),
             {'title': 'Table view', 'name': 'tabular_table', 'type': 'table_view',
              'delegate': table.SpinBoxDelegate, 'menu': True,
              'value': table.TableModel([[0.1, 0.2, 0.3]], ['value1', 'value2', 'value3']),
