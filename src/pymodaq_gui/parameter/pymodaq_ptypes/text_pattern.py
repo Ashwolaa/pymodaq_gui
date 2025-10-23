@@ -229,13 +229,6 @@ if __name__ == "__main__":
                         "visual_indicator": True,
                     },
                 },
-                {
-                    "name": "Tags",
-                    "type": "text_pattern",
-                    "value": "",
-                    "patterns": {"#": ["urgent", "todo", "done", "in-progress"]},
-                    "completer_config": {"min_width": 150, "case_sensitive": False},
-                },
             ],
         },
     ]
