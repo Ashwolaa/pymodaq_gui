@@ -77,15 +77,19 @@ def main():
     # Create menu bar and add config menu
     menubar = window.menuBar()
 
+    # Add File menu
+    file_menu = menubar.addMenu("File")
+    file_menu.addAction("Exit", app.quit)
+
     # Example 1: Full menu with all actions (default)
-    config_menu = config_manager.create_menu(menubar, "Demo Configs")
+    config_menu = config_manager.create_menu(menubar, "Configs full actions")
 
     # Example 2: Custom menu with only specific actions (commented out)
-    # config_menu = config_manager.create_menu(
-    #     menubar,
-    #     "Demo Configs",
-    #     actions=['new', 'edit', 'load', 'open_dir']  # No delete for safety
-    # )
+    config_menu = config_manager.create_menu(
+        menubar,
+        "Configs selected actions",
+        actions=['new', 'edit', 'load', 'open_dir']  # No delete for safety
+    )
 
     # Connect signals to update display
     def log_message(msg):
@@ -106,10 +110,6 @@ def main():
     config_manager.config_loaded.connect(on_config_loaded)
     config_manager.config_saved.connect(on_config_saved)
     config_manager.config_deleted.connect(on_config_deleted)
-
-    # Add File menu
-    file_menu = menubar.addMenu("File")
-    file_menu.addAction("Exit", app.quit)
 
     # Show initial message
     log_message("Welcome! Use 'Demo Configs → New Demo...' to get started.")
