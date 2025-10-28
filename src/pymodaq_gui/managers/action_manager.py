@@ -1,14 +1,12 @@
 import warnings
-from typing import Iterable as IterableType
 from collections.abc import Iterable
-from pymodaq_utils.warnings import deprecation_msg
-from multipledispatch import dispatch
-from typing import Union, Callable, List
-
-from qtpy import QtGui, QtWidgets, QtCore
-from qtpy.QtWidgets import QAction
-
 from pathlib import Path
+from typing import Callable, Iterable as IterableType, Union
+
+from multipledispatch import dispatch
+from pymodaq_utils.warnings import deprecation_msg
+from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtWidgets import QAction as QtQAction
 
 here = Path(__file__).parent
 icon_folder = here.parent.joinpath('QtDesigner_Ressources/Icon_Library/')
@@ -17,7 +15,7 @@ QtCore.QDir.addSearchPath('icons', str(icon_folder))
 def create_icon(icon_name: Union[str, Path]):
     icon = QtGui.QIcon()
     if Path(icon_name).is_file(): # Test if icon is in path
-        icon.addPixmap(QtGui.QPixmap(icon_name), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(icon_name), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
     else:
         pixmap = QtGui.QPixmap(f"icons:{icon_name}.png") # Test if icon is in pymodaq's library
         if pixmap.isNull(): 
@@ -25,11 +23,11 @@ def create_icon(icon_name: Union[str, Path]):
                 icon = QtGui.QIcon.fromTheme(getattr(QtGui.QIcon.ThemeIcon, icon_name))
         else:
             icon = QtGui.QIcon()
-            icon.addPixmap(QtGui.QPixmap(pixmap), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            icon.addPixmap(QtGui.QPixmap(pixmap), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
     return icon
 
 
-class QAction(QAction):
+class QAction(QtQAction):
     """
     QAction subclass to mimic signals as pushbuttons. Done to be sure of backcompatibility
     when I moved from pushbuttons to QAction
@@ -194,6 +192,7 @@ class ActionManager:
     """
     def __init__(self, toolbar=None, menu=None):
         self._actions = dict([])
+        self._submenus = dict([])
         self._toolbar = toolbar
         self._menu = menu
 
@@ -218,7 +217,7 @@ class ActionManager:
 
     def add_action(self, short_name: str = '', name: str = '', icon_name: Union[str, Path, QtGui.QIcon] = '', tip='',
                    checkable=False,
-                   checked=False, toolbar=None, menu=None,
+                   checked=False, toolbar=None, menu=None, submenu: Union[str, QtWidgets.QMenu] = None,
                    visible=True, shortcut=None, auto_toolbar=True, auto_menu=True,
                    enabled=True):
         """Create a new action and add it to toolbar and menu
@@ -238,22 +237,25 @@ class ActionManager:
         checkable: bool
             set the checkable state of the action
         checked: bool
-            set the current state of the action            
+            set the current state of the action
         toolbar: QToolBar
             a toolbar where action should be added. Actions can also be added later see *affect_to*
         menu: QMenu
             a menu where action should be added. Actions can also be added later see *affect_to*
+        submenu: str or QMenu
+            If provided, the action will be added to this submenu instead of the main menu.
+            Can be either a string (submenu name as registered) or a QMenu instance.
         visible: bool
             display or not the action in the toolbar/menu
         auto_toolbar: bool
             if True add this action to the defined toolbar
         auto_menu: bool
-            if True add this action to the defined menu
+            if True add this action to the defined menu (or submenu if specified)
         enabled: bool
             set the enabled state of this action
         See Also
         --------
-        affect_to, pymodaq.resources.QtDesigner_Ressources.Icon_Library,
+        affect_to, add_submenu, pymodaq.resources.QtDesigner_Ressources.Icon_Library,
         pymodaq.utils.managers.action_manager.add_action
         """
         if auto_toolbar:
@@ -261,7 +263,16 @@ class ActionManager:
                 toolbar = self._toolbar
         if auto_menu:
             if menu is None:
-                menu = self._menu
+                # If submenu is specified, resolve it to a QMenu object
+                if submenu is not None:
+                    if isinstance(submenu, str):
+                        menu = self.get_submenu(submenu)
+                    elif isinstance(submenu, QtWidgets.QMenu):
+                        menu = submenu
+                    else:
+                        raise TypeError(f'submenu must be either a string or QMenu, got {type(submenu)}')
+                else:
+                    menu = self._menu
         self._actions[short_name] = addaction(name, icon_name, tip, checkable=checkable,
                                               checked=checked, toolbar=toolbar, menu=menu,
                                               visible=visible, shortcut=shortcut, enabled=enabled)
@@ -306,6 +317,56 @@ class ActionManager:
         else:
             warnings.warn(UserWarning(f'Impossible to add the widget {short_name} and type {klass} to the toolbar'))
 
+    def add_submenu(self, short_name: str, title: str, menu: QtWidgets.QMenu = None,
+                    icon_name: Union[str, Path, QtGui.QIcon] = '', auto_menu=True) -> QtWidgets.QMenu:
+        """Create and add a submenu to a parent menu
+
+        Parameters
+        ----------
+        short_name: str
+            the name as referenced in the dict self._submenus
+        title: str
+            Displayed title of the submenu
+        menu: QMenu, optional
+            a parent menu where this submenu should be added. If None, uses the default menu
+        icon_name: str / Path / QtGui.QIcon / enum name, optional
+            str/Path: the png file name/path to produce the icon
+            QtGui.QIcon: the instance of a QIcon element
+            ThemeIcon enum: the value of QtGui.QIcon.ThemeIcon (requires Qt>=6.7)
+        auto_menu: bool
+            if True add this submenu to the defined menu
+
+        Returns
+        -------
+        QtWidgets.QMenu
+            The created submenu
+
+        See Also
+        --------
+        add_action, get_submenu
+        """
+        if auto_menu:
+            if menu is None:
+                menu = self._menu
+
+        submenu = QtWidgets.QMenu(title)
+
+        # Set icon if provided
+        if icon_name and icon_name != '':
+            if isinstance(icon_name, QtGui.QIcon):
+                submenu.setIcon(icon_name)
+            else:
+                submenu.setIcon(create_icon(icon_name))
+
+        # Add to parent menu if specified
+        if menu is not None:
+            menu.addMenu(submenu)
+
+        # Store reference
+        self._submenus[short_name] = submenu
+
+        return submenu
+
     def set_toolbar(self, toolbar):
         """affect a toolbar to self
 
@@ -339,7 +400,7 @@ class ActionManager:
         self.get_action(action_name).setText(text)
 
     @property
-    def actions(self) -> List[QAction]:
+    def actions(self) -> list[QAction]:
         return list(self._actions.values())
 
     @property
@@ -364,6 +425,70 @@ class ActionManager:
             raise KeyError(f'The action with name: {name} is not referenced'
                            f' in the view actions: {self._actions.keys()}')
 
+    def get_action_path(self, action_name: str, separator: str = ' > ') -> str:
+        """Get the menu path of an action (e.g., "File > Recent > Open")
+
+        Parameters
+        ----------
+        action_name: str
+            The action name as defined in setup_actions
+        separator: str
+            The separator to use between menu levels (default: ' > ')
+
+        Returns
+        -------
+        str
+            The full menu path of the action, or empty string if not in any menu
+
+        Examples
+        --------
+        >>> action_manager.get_action_path('open')
+        'File > Open'
+        >>> action_manager.get_action_path('recent_1')
+        'File > Recent Files > Project1'
+        """
+        if not self.has_action(action_name):
+            raise KeyError(f'The action with name: {action_name} is not referenced'
+                           f' in the view actions: {self._actions.keys()}')
+
+        action = self._actions[action_name]
+        path_parts = []
+
+        # Find which menu(s) contain this action
+        def find_action_in_menu(menu: QtWidgets.QMenu, action: QAction) -> list[str]:
+            """Recursively search for action in menu hierarchy"""
+            if menu is None:
+                return []
+
+            # Check if action is directly in this menu
+            if action in menu.actions():
+                return [menu.title()]
+
+            # Check submenus
+            for menu_action in menu.actions():
+                if menu_action.menu() is not None:
+                    submenu = menu_action.menu()
+                    sub_path = find_action_in_menu(submenu, action)
+                    if sub_path:
+                        return [menu.title()] + sub_path
+
+            return []
+
+        # Search in all registered submenus
+        for submenu in self._submenus.values():
+            path = find_action_in_menu(submenu, action)
+            if path:
+                path_parts = path
+                break
+
+        # If not found in submenus, check main menu
+        if not path_parts and self._menu is not None:
+            path = find_action_in_menu(self._menu, action)
+            if path:
+                path_parts = path
+
+        return separator.join(path_parts) if path_parts else ''
+
     def has_action(self, action_name) -> bool:
         """Check if an action has been defined
         Parameters
@@ -376,6 +501,48 @@ class ActionManager:
         bool: True if the action exists, False otherwise
         """
         return action_name in self._actions
+
+    def get_submenu(self, name: str) -> QtWidgets.QMenu:
+        """Getter of a given submenu
+
+        Parameters
+        ----------
+        name: str
+            The submenu name as defined when calling add_submenu
+
+        Returns
+        -------
+        QMenu
+        """
+        if self.has_submenu(name):
+            return self._submenus[name]
+        else:
+            raise KeyError(f'The submenu with name: {name} is not referenced'
+                           f' in the submenus: {self._submenus.keys()}')
+
+    def has_submenu(self, submenu_name: str) -> bool:
+        """Check if a submenu has been defined
+
+        Parameters
+        ----------
+        submenu_name: str
+            The submenu name as defined when calling add_submenu
+
+        Returns
+        -------
+        bool: True if the submenu exists, False otherwise
+        """
+        return submenu_name in self._submenus
+
+    @property
+    def submenus(self) -> list[QtWidgets.QMenu]:
+        """Get all submenus"""
+        return list(self._submenus.values())
+
+    @property
+    def submenus_names(self) -> list[str]:
+        """Get all submenu names"""
+        return list(self._submenus.keys())
 
     @property
     def toolbar(self) -> QtWidgets.QToolBar:
