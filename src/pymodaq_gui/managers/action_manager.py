@@ -193,11 +193,11 @@ class ActionManager:
     menu: QMenu, option
         The menu to use as default
     """
-    def __init__(self, toolbar=None, menu=None):
-        self._actions = dict([])
-        self._submenus = dict([])
-        self._toolbar = toolbar
-        self._menu = menu
+    def __init__(self, toolbar: QtWidgets.QToolBar = None, menu: QtWidgets.QMenu = None):
+        self._actions: dict[str, QAction] = {}
+        self._submenus: dict[str, QtWidgets.QMenu] = {}
+        self._toolbar: QtWidgets.QToolBar = toolbar
+        self._menu: QtWidgets.QMenu = menu
 
         #self.setup_actions()
 
