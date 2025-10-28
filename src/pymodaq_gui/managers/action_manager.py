@@ -195,11 +195,26 @@ class ActionManager:
     """
     def __init__(self, toolbar: QtWidgets.QToolBar = None, menu: QtWidgets.QMenu = None):
         self._actions: dict[str, QAction] = {}
-        self._submenus: dict[str, QtWidgets.QMenu] = {}
-        self._toolbar: QtWidgets.QToolBar = toolbar
-        self._menu: QtWidgets.QMenu = menu
+        self._menus: dict[str, QtWidgets.QMenu] = {}
+        self._toolbars: dict[str, QtWidgets.QToolBar] = {}
+
+        # Store defaults in dicts
+        if menu is not None:
+            self._menus['_default'] = menu
+        if toolbar is not None:
+            self._toolbars['_default'] = toolbar
 
         #self.setup_actions()
+
+    @property
+    def _menu(self) -> QtWidgets.QMenu:
+        """Get the default menu (backward compatibility)"""
+        return self._menus.get('_default')
+
+    @property
+    def _toolbar(self) -> QtWidgets.QToolBar:
+        """Get the default toolbar (backward compatibility)"""
+        return self._toolbars.get('_default')
 
     def setup_actions(self):
         """Method where to create actions to be subclassed. Mandatory
@@ -220,7 +235,7 @@ class ActionManager:
 
     def add_action(self, short_name: str = '', name: str = '', icon_name: Union[str, Path, QtGui.QIcon] = '', tip='',
                    checkable=False,
-                   checked=False, toolbar=None, menu=None, submenu: Union[str, QtWidgets.QMenu] = None,
+                   checked=False, toolbar: Union[str, QtWidgets.QToolBar, None]=None, menu: Union[str, QtWidgets.QMenu, None] = None,
                    visible=True, shortcut=None, auto_toolbar=True, auto_menu=True,
                    enabled=True):
         """Create a new action and add it to toolbar and menu
@@ -241,19 +256,24 @@ class ActionManager:
             set the checkable state of the action
         checked: bool
             set the current state of the action
-        toolbar: QToolBar
-            a toolbar where action should be added. Actions can also be added later see *affect_to*
-        menu: QMenu
-            a menu where action should be added. Actions can also be added later see *affect_to*
-        submenu: str or QMenu
-            If provided, the action will be added to this submenu instead of the main menu.
-            Can be either a string (submenu name as registered) or a QMenu instance.
+        toolbar: str or QToolBar or None
+            a toolbar where action should be added. Can be:
+            - None: adds to the default menu (self._toolbar)
+            - str: toolbar name as registered via add_toolbar()
+            - QToolbar: direct QToolbar instance
+              Actions can also be added later see *affect_to*
+        menu: str or QMenu or None
+            Where to add the action. Can be:
+            - None: adds to the default menu (self._menu)
+            - str: menu name as registered via add_menu()
+            - QMenu: direct QMenu instance
+            Actions can also be added later see *affect_to*
         visible: bool
             display or not the action in the toolbar/menu
         auto_toolbar: bool
             if True add this action to the defined toolbar
         auto_menu: bool
-            if True add this action to the defined menu (or submenu if specified)
+            if True add this action to the defined menu
         enabled: bool
             set the enabled state of this action
         See Also
@@ -264,18 +284,17 @@ class ActionManager:
         if auto_toolbar:
             if toolbar is None:
                 toolbar = self._toolbar
+            elif isinstance(toolbar, str):
+                toolbar = self.get_toolbar(toolbar)
+            elif not isinstance(toolbar, QtWidgets.QToolBar):
+                raise TypeError(f'toolbar must be either None, a string, or QToolBar, got {type(menu)}')                
         if auto_menu:
             if menu is None:
-                # If submenu is specified, resolve it to a QMenu object
-                if submenu is not None:
-                    if isinstance(submenu, str):
-                        menu = self.get_submenu(submenu)
-                    elif isinstance(submenu, QtWidgets.QMenu):
-                        menu = submenu
-                    else:
-                        raise TypeError(f'submenu must be either a string or QMenu, got {type(submenu)}')
-                else:
-                    menu = self._menu
+                menu = self._menu
+            elif isinstance(menu, str):
+                menu = self.get_menu(menu)
+            elif not isinstance(menu, QtWidgets.QMenu):
+                raise TypeError(f'menu must be either None, a string, or QMenu, got {type(menu)}')
         self._actions[short_name] = addaction(name, icon_name, tip, checkable=checkable,
                                               checked=checked, toolbar=toolbar, menu=menu,
                                               visible=visible, shortcut=shortcut, enabled=enabled)
@@ -320,75 +339,100 @@ class ActionManager:
         else:
             warnings.warn(UserWarning(f'Impossible to add the widget {short_name} and type {klass} to the toolbar'))
 
-    def add_submenu(self, short_name: str, title: str, menu: QtWidgets.QMenu = None,
-                    icon_name: Union[str, Path, QtGui.QIcon] = '', auto_menu=True) -> QtWidgets.QMenu:
-        """Create and add a submenu to a parent menu
+    def add_menu(self, short_name: str, title: str, menu: QtWidgets.QMenu = None,
+                 icon_name: Union[str, Path, QtGui.QIcon] = '', auto_menu=True) -> QtWidgets.QMenu:
+        """Create and add a menu to a parent menu
 
         Parameters
         ----------
         short_name: str
-            the name as referenced in the dict self._submenus
+            the name as referenced in the dict self._menus
         title: str
-            Displayed title of the submenu
+            Displayed title of the menu
         menu: QMenu, optional
-            a parent menu where this submenu should be added. If None, uses the default menu
+            a parent menu where this menu should be added. If None, uses the default menu
         icon_name: str / Path / QtGui.QIcon / enum name, optional
             str/Path: the png file name/path to produce the icon
             QtGui.QIcon: the instance of a QIcon element
             ThemeIcon enum: the value of QtGui.QIcon.ThemeIcon (requires Qt>=6.7)
         auto_menu: bool
-            if True add this submenu to the defined menu
+            if True add this menu to the defined parent menu
 
         Returns
         -------
         QtWidgets.QMenu
-            The created submenu
+            The created menu
 
         See Also
         --------
-        add_action, get_submenu
+        add_action, get_menu
         """
         if auto_menu:
             if menu is None:
                 menu = self._menu
 
-        submenu = QtWidgets.QMenu(title)
+        new_menu = QtWidgets.QMenu(title)
 
         # Set icon if provided
         if icon_name and icon_name != '':
             if isinstance(icon_name, QtGui.QIcon):
-                submenu.setIcon(icon_name)
+                new_menu.setIcon(icon_name)
             else:
-                submenu.setIcon(create_icon(icon_name))
+                new_menu.setIcon(create_icon(icon_name))
 
         # Add to parent menu if specified
         if menu is not None:
-            menu.addMenu(submenu)
+            menu.addMenu(new_menu)
 
         # Store reference
-        self._submenus[short_name] = submenu
+        self._menus[short_name] = new_menu
 
-        return submenu
+        return new_menu
+
+    def add_toolbar(self, short_name: str, title: str = '', parent: QtWidgets.QWidget = None) -> QtWidgets.QToolBar:
+        """Create and add a toolbar
+
+        Parameters
+        ----------
+        short_name: str
+            the name as referenced in the dict self._toolbars
+        title: str, optional
+            Displayed title of the toolbar
+        parent: QWidget, optional
+            parent widget for the toolbar (typically a QMainWindow)
+
+        Returns
+        -------
+        QtWidgets.QToolBar
+            The created toolbar
+
+        See Also
+        --------
+        add_action, get_toolbar
+        """
+        toolbar = QtWidgets.QToolBar(title, parent)
+        self._toolbars[short_name] = toolbar
+        return toolbar
 
     def set_toolbar(self, toolbar):
-        """affect a toolbar to self
+        """Set the default toolbar
 
         Parameters
         ----------
-        toolbar:
-            QtWidgets.QToolBar
+        toolbar: QtWidgets.QToolBar
+            The toolbar to set as default
         """
-        self._toolbar = toolbar
+        self._toolbars['_default'] = toolbar
 
     def set_menu(self, menu):
-        """affect a menu to self
+        """Set the default menu
 
         Parameters
         ----------
-        menu:
-            QtWidgets.QMenu
+        menu: QtWidgets.QMenu
+            The menu to set as default
         """
-        self._menu = menu
+        self._menus['_default'] = menu
 
     def set_action_text(self, action_name: str, text: str):
         """Convenience method to set the displayed text on an action
@@ -428,70 +472,6 @@ class ActionManager:
             raise KeyError(f'The action with name: {name} is not referenced'
                            f' in the view actions: {self._actions.keys()}')
 
-    def get_action_path(self, action_name: str, separator: str = ' > ') -> str:
-        """Get the menu path of an action (e.g., "File > Recent > Open")
-
-        Parameters
-        ----------
-        action_name: str
-            The action name as defined in setup_actions
-        separator: str
-            The separator to use between menu levels (default: ' > ')
-
-        Returns
-        -------
-        str
-            The full menu path of the action, or empty string if not in any menu
-
-        Examples
-        --------
-        >>> action_manager.get_action_path('open')
-        'File > Open'
-        >>> action_manager.get_action_path('recent_1')
-        'File > Recent Files > Project1'
-        """
-        if not self.has_action(action_name):
-            raise KeyError(f'The action with name: {action_name} is not referenced'
-                           f' in the view actions: {self._actions.keys()}')
-
-        action = self._actions[action_name]
-        path_parts = []
-
-        # Find which menu(s) contain this action
-        def find_action_in_menu(menu: QtWidgets.QMenu, action: QAction) -> list[str]:
-            """Recursively search for action in menu hierarchy"""
-            if menu is None:
-                return []
-
-            # Check if action is directly in this menu
-            if action in menu.actions():
-                return [menu.title()]
-
-            # Check submenus
-            for menu_action in menu.actions():
-                if menu_action.menu() is not None:
-                    submenu = menu_action.menu()
-                    sub_path = find_action_in_menu(submenu, action)
-                    if sub_path:
-                        return [menu.title()] + sub_path
-
-            return []
-
-        # Search in all registered submenus
-        for submenu in self._submenus.values():
-            path = find_action_in_menu(submenu, action)
-            if path:
-                path_parts = path
-                break
-
-        # If not found in submenus, check main menu
-        if not path_parts and self._menu is not None:
-            path = find_action_in_menu(self._menu, action)
-            if path:
-                path_parts = path
-
-        return separator.join(path_parts) if path_parts else ''
-
     def has_action(self, action_name) -> bool:
         """Check if an action has been defined
         Parameters
@@ -505,47 +485,89 @@ class ActionManager:
         """
         return action_name in self._actions
 
-    def get_submenu(self, name: str) -> QtWidgets.QMenu:
-        """Getter of a given submenu
+    def get_menu(self, name: str) -> QtWidgets.QMenu:
+        """Getter of a given menu
 
         Parameters
         ----------
         name: str
-            The submenu name as defined when calling add_submenu
+            The menu name as defined when calling add_menu
 
         Returns
         -------
         QMenu
         """
-        if self.has_submenu(name):
-            return self._submenus[name]
+        if self.has_menu(name):
+            return self._menus[name]
         else:
-            raise KeyError(f'The submenu with name: {name} is not referenced'
-                           f' in the submenus: {self._submenus.keys()}')
+            raise KeyError(f'The menu with name: {name} is not referenced'
+                           f' in the menus: {self._menus.keys()}')
 
-    def has_submenu(self, submenu_name: str) -> bool:
-        """Check if a submenu has been defined
+    def has_menu(self, menu_name: str) -> bool:
+        """Check if a menu has been defined
 
         Parameters
         ----------
-        submenu_name: str
-            The submenu name as defined when calling add_submenu
+        menu_name: str
+            The menu name as defined when calling add_menu
 
         Returns
         -------
-        bool: True if the submenu exists, False otherwise
+        bool: True if the menu exists, False otherwise
         """
-        return submenu_name in self._submenus
+        return menu_name in self._menus
+
+    def get_toolbar(self, name: str) -> QtWidgets.QToolBar:
+        """Getter of a given toolbar
+
+        Parameters
+        ----------
+        name: str
+            The toolbar name as defined when calling add_toolbar
+
+        Returns
+        -------
+        QToolBar
+        """
+        if self.has_toolbar(name):
+            return self._toolbars[name]
+        else:
+            raise KeyError(f'The toolbar with name: {name} is not referenced'
+                           f' in the toolbars: {self._toolbars.keys()}')
+
+    def has_toolbar(self, toolbar_name: str) -> bool:
+        """Check if a toolbar has been defined
+
+        Parameters
+        ----------
+        toolbar_name: str
+            The toolbar name as defined when calling add_toolbar
+
+        Returns
+        -------
+        bool: True if the toolbar exists, False otherwise
+        """
+        return toolbar_name in self._toolbars
 
     @property
-    def submenus(self) -> list[QtWidgets.QMenu]:
-        """Get all submenus"""
-        return list(self._submenus.values())
+    def menus(self) -> list[QtWidgets.QMenu]:
+        """Get all menus"""
+        return list(self._menus.values())
 
     @property
-    def submenus_names(self) -> list[str]:
-        """Get all submenu names"""
-        return list(self._submenus.keys())
+    def menus_names(self) -> list[str]:
+        """Get all menu names"""
+        return list(self._menus.keys())
+
+    @property
+    def toolbars(self) -> list[QtWidgets.QToolBar]:
+        """Get all toolbars"""
+        return list(self._toolbars.values())
+
+    @property
+    def toolbars_names(self) -> list[str]:
+        """Get all toolbar names"""
+        return list(self._toolbars.keys())
 
     @property
     def toolbar(self) -> QtWidgets.QToolBar:
@@ -553,7 +575,7 @@ class ActionManager:
         return self._toolbar
 
     @property
-    def menu(self) -> QtWidgets.QMenuBar:
+    def menu(self) -> QtWidgets.QMenu:
         """Get the default menu"""
         return self._menu
 
