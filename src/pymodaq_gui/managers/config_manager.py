@@ -441,9 +441,23 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         if has_creation_actions and any(a in actions for a in ['load', 'delete', 'refresh', 'open_dir']):
             self._menu.addSeparator()
 
-        # Load submenu
+        # Load submenu - USE ActionManager's add_submenu for consistency
         if 'load' in actions:
-            self._load_submenu = self._menu.addMenu(f"Load {self.title}")
+            # Check if submenu already exists (in case create_menu is called multiple times)
+            if self.has_submenu('load_submenu'):
+                # Reuse existing submenu
+                self._load_submenu = self.get_submenu('load_submenu')
+                # Add to current menu
+                self._menu.addMenu(self._load_submenu)
+            else:
+                # Create new submenu
+                self._load_submenu = self.add_submenu(
+                    'load_submenu',
+                    f"Load {self.title}",
+                    menu=self._menu,
+                    icon_name=qta.icon('mdi.folder-open'),
+                    auto_menu=False  # We explicitly pass the parent menu
+                )
             self._populate_load_menu()
             has_file_actions = True
 
