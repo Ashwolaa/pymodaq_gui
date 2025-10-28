@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, List
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets, QtCore, QtGui
 from qtpy.QtWidgets import QMessageBox, QDialogButtonBox, QDialog, QMenu, QAction, QMenuBar
 from qtpy.QtCore import QObject, Signal
 
