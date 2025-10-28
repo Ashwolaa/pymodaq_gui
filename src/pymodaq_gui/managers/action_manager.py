@@ -278,7 +278,7 @@ class ActionManager:
             set the enabled state of this action
         See Also
         --------
-        affect_to, add_submenu, pymodaq.resources.QtDesigner_Ressources.Icon_Library,
+        affect_to, pymodaq.resources.QtDesigner_Ressources.Icon_Library,
         pymodaq.utils.managers.action_manager.add_action
         """
         if auto_toolbar:
