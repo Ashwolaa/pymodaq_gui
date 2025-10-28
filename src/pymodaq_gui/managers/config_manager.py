@@ -164,12 +164,6 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
             tip="Duplicate configuration with a new name",
         )
         self.add_action(
-            "delete",
-            f"Delete {self.title}...",
-            icon_name=qta.icon("mdi.delete"),
-            tip="Delete a configuration file",
-        )
-        self.add_action(
             "refresh",
             "Refresh List",
             icon_name=qta.icon("ei.refresh"),
@@ -186,12 +180,11 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         self.connect_action('new', self._menu_new_config)
         self.connect_action('edit', self._menu_edit_current_config)
         self.connect_action('duplicate', self._menu_duplicate_config)
-        self.connect_action('delete', self._menu_delete_config)
         self.connect_action('refresh', self._menu_refresh_list)
         self.connect_action('open_dir', self._menu_open_config_dir)
 
-        self.config_saved.connect(self._populate_load_menu)
-        self.config_deleted.connect(self._populate_load_menu)
+        self.config_saved.connect(self._populate_menus)
+        self.config_deleted.connect(self._populate_menus)
     # ============ End Action Management ============
 
     def set_new_config(self, file: str = None, show: bool = True) -> None:
@@ -458,18 +451,37 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                     icon_name=qta.icon('mdi.folder-open'),
                     auto_menu=False  # We explicitly pass the parent menu
                 )
-            self._populate_load_menu()
+            has_file_actions = True
+
+        # Delete submenu - USE ActionManager's add_submenu for consistency
+        if 'delete' in actions:
+            # Check if submenu already exists (in case create_menu is called multiple times)
+            if self.has_submenu('delete_submenu'):
+                # Reuse existing submenu
+                self._delete_submenu = self.get_submenu('delete_submenu')
+                # Add to current menu
+                self._menu.addMenu(self._delete_submenu)
+            else:
+                # Create new submenu
+                self._delete_submenu = self.add_submenu(
+                    'delete_submenu',
+                    f"Delete {self.title}",
+                    menu=self._menu,
+                    icon_name=qta.icon('mdi.delete'),
+                    auto_menu=False  # We explicitly pass the parent menu
+                )
             has_file_actions = True
 
         # Separator before management actions
-        if has_file_actions and any(a in actions for a in ['delete', 'refresh', 'open_dir']):
+        if has_file_actions and any(a in actions for a in ['refresh', 'open_dir']):
             self._menu.addSeparator()
 
         # File management actions
-        for action_name in ['delete', 'refresh', 'open_dir']:
+        for action_name in ['refresh', 'open_dir']:
             if action_name in actions:
                 self.affect_to(action_name, self._menu)
 
+        self._populate_menus()
         return self._menu
 
     def _menu_new_config(self) -> None:
@@ -527,33 +539,33 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                 # Restore original filename if user cancelled
                 self.settings.child("filename").setValue(old_filename)
 
-    def _menu_delete_config(self) -> None:
+    def _menu_delete_config(self, file_path: Path) -> None:
         """Menu action: Delete a configuration file after confirmation"""
-        # Get list of available configs
-        config_files = self._get_config_files()
+        # # Get list of available configs
+        # config_files = self._get_config_files()
 
-        if not config_files:
-            QMessageBox.information(
-                None,
-                "No Configurations",
-                f"No {self.title} configuration files found in {self.config_path}"
-            )
-            return
+        # if not config_files:
+        #     QMessageBox.information(
+        #         None,
+        #         "No Configurations",
+        #         f"No {self.title} configuration files found in {self.config_path}"
+        #     )
+        #     return
 
-        # Show selection dialog
-        file_names = [f.stem for f in config_files]
-        file_name, ok = QtWidgets.QInputDialog.getItem(
-            None,
-            f"Delete {self.title}",
-            "Select configuration to delete:",
-            file_names,
-            0,
-            False
-        )
+        # # Show selection dialog
+        # file_names = [f.stem for f in config_files]
+        # file_name, ok = QtWidgets.QInputDialog.getItem(
+        #     None,
+        #     f"Delete {self.title}",
+        #     "Select configuration to delete:",
+        #     file_names,
+        #     0,
+        #     False
+        # )
 
-        if not ok or not file_name:
-            return
-
+        # if not ok or not file_name:
+        #     return
+        file_name = file_path.stem
         # Confirm deletion
         confirm = dialogbox(
             title="Confirm Deletion",
@@ -566,23 +578,116 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                 file_to_delete.unlink()
                 logger.info(f"Deleted configuration: {file_to_delete}")
                 self.config_deleted.emit(file_to_delete)
-                QMessageBox.information(
-                    None,
-                    "Deleted",
-                    f"Configuration '{file_name}' has been deleted."
-                )
+                if logger.level == "DEBUG":
+                    QMessageBox.information(
+                        None,
+                        "Deleted",
+                        f"Configuration '{file_name}' has been deleted."
+                    )
             except Exception as e:
                 logger.exception(f"Failed to delete {file_to_delete}: {e}")
-                QMessageBox.critical(
-                    None,
-                    "Delete Failed",
-                    f"Failed to delete configuration:\n{str(e)}"
-                )
+                if logger.level == "DEBUG":
+                    QMessageBox.critical(
+                        None,
+                        "Delete Failed",
+                        f"Failed to delete configuration:\n{str(e)}"
+                    )
 
     def _menu_refresh_list(self) -> None:
         """Menu action: Refresh the Load submenu"""
-        self._populate_load_menu()
+        self._populate_menus()
         logger.info("Configuration list refreshed")
+
+
+    def _populate_config_list_menu(self, menu, config_files, slot) -> None:
+        """Populate menu with available configuration files"""
+        if not config_files:
+            # Add disabled "No configs" item
+            no_configs_action = menu.addAction("(No configurations found)")
+            no_configs_action.setEnabled(False)
+            return
+        for config_file in sorted(config_files, key=lambda f: f.stem):
+            action = menu.addAction(config_file.stem)
+            # Use lambda with default argument to capture config_file correctly
+            action.triggered.connect(
+                lambda checked=False, path=config_file: slot(path)
+            )
+
+    def _populate_menus(self) -> None:
+        """Populate all menus with their actions"""
+        # Get all config files
+        config_files = self._get_config_files()
+        if hasattr(self, '_load_submenu'):
+            self._load_submenu.clear()
+            self._populate_config_list_menu(self._load_submenu, config_files, self._menu_load_config)
+        if hasattr(self, "_delete_submenu"):
+            self._delete_submenu.clear()
+            self._populate_config_list_menu(self._delete_submenu, config_files, self._menu_delete_config)            
+
+    # def _populate_load_menu(self) -> None:
+    #     """Populate the Load submenu with available configuration files"""
+    #     if not hasattr(self, '_load_submenu'):
+    #         return
+
+    #     # Clear existing items
+    #     self._load_submenu.clear()
+
+    #     # Get all config files
+    #     config_files = self._get_config_files()
+
+    #     if not config_files:
+    #         # Add disabled "No configs" item
+    #         no_configs_action = self._load_submenu.addAction("(No configurations found)")
+    #         no_configs_action.setEnabled(False)
+    #         return
+
+    #     # Add action for each config file
+    #     for config_file in sorted(config_files, key=lambda f: f.stem):
+    #         action = self._load_submenu.addAction(config_file.stem)
+    #         # Use lambda with default argument to capture config_file correctly
+    #         action.triggered.connect(
+    #             lambda checked=False, path=config_file: self._menu_load_config(path)
+    #         )
+
+    def _menu_load_config(self, file_path: Path) -> None:
+        """
+        Menu action: Load a specific configuration file
+
+        Args:
+            file_path (Path): Path to the configuration file to load
+        """
+        try:
+            success = self.set_config_from_file(file_path, show=False)
+            if success:
+                logger.info(f"Loaded configuration: {file_path.stem}")
+        except Exception as e:
+            logger.exception(f"Failed to load {file_path}: {e}")
+            QMessageBox.critical(
+                None,
+                "Load Failed",
+                f"Failed to load configuration:\n{str(e)}"
+            )
+
+    def _get_config_files(self) -> List[Path]:
+        """
+        Get list of all XML configuration files in config_path
+
+        Returns:
+            List[Path]: List of Path objects for all .xml files in config_path
+        """
+        if not self.config_path or not isinstance(self.config_path, Path):
+            return []
+
+        if not self.config_path.exists():
+            logger.warning(f"Config path does not exist: {self.config_path}")
+            return []
+
+        try:
+            return [f for f in self.config_path.iterdir() if f.suffix == ".xml"]
+        except Exception as e:
+            logger.exception(f"Error reading config directory: {e}")
+            return []
+
 
     def _menu_open_config_dir(self) -> None:
         """Menu action: Open configuration directory in file explorer"""
@@ -633,67 +738,3 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                 "Error",
                 f"Error opening directory:\n{str(e)}"
             )
-
-    def _populate_load_menu(self) -> None:
-        """Populate the Load submenu with available configuration files"""
-        if not hasattr(self, '_load_submenu'):
-            return
-
-        # Clear existing items
-        self._load_submenu.clear()
-
-        # Get all config files
-        config_files = self._get_config_files()
-
-        if not config_files:
-            # Add disabled "No configs" item
-            no_configs_action = self._load_submenu.addAction("(No configurations found)")
-            no_configs_action.setEnabled(False)
-            return
-
-        # Add action for each config file
-        for config_file in sorted(config_files, key=lambda f: f.stem):
-            action = self._load_submenu.addAction(config_file.stem)
-            # Use lambda with default argument to capture config_file correctly
-            action.triggered.connect(
-                lambda checked=False, path=config_file: self._menu_load_config(path)
-            )
-
-    def _menu_load_config(self, file_path: Path) -> None:
-        """
-        Menu action: Load a specific configuration file
-
-        Args:
-            file_path (Path): Path to the configuration file to load
-        """
-        try:
-            success = self.set_config_from_file(file_path, show=False)
-            if success:
-                logger.info(f"Loaded configuration: {file_path.stem}")
-        except Exception as e:
-            logger.exception(f"Failed to load {file_path}: {e}")
-            QMessageBox.critical(
-                None,
-                "Load Failed",
-                f"Failed to load configuration:\n{str(e)}"
-            )
-
-    def _get_config_files(self) -> List[Path]:
-        """
-        Get list of all XML configuration files in config_path
-
-        Returns:
-            List[Path]: List of Path objects for all .xml files in config_path
-        """
-        if not self.config_path or not isinstance(self.config_path, Path):
-            return []
-
-        if not self.config_path.exists():
-            logger.warning(f"Config path does not exist: {self.config_path}")
-            return []
-
-        try:
-            return [f for f in self.config_path.iterdir() if f.suffix == ".xml"]
-        except Exception as e:
-            logger.exception(f"Error reading config directory: {e}")
-            return []
