@@ -61,15 +61,14 @@ class CustomApp(QObject, ActionManager, ParameterManager):
 
         self.docks: Dict[str, Dock] = dict([])
         self.statusbar = None
-        self._toolbar = QtWidgets.QToolBar()
         self._menubar: QtWidgets.QMenuBar = None
+        self.set_toolbar(QtWidgets.QToolBar()) # create self._toolbar
 
         if self.mainwindow is not None:
             self.mainwindow.addToolBar(self._toolbar)
             self._menubar = self.mainwindow.menuBar()
             self.statusbar = self.mainwindow.statusBar()
 
-        self.set_toolbar(self._toolbar)
 
     def setup_ui(self):
         self.setup_docks()
