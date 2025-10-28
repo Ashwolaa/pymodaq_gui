@@ -298,6 +298,7 @@ class ActionManager:
         self._actions[short_name] = addaction(name, icon_name, tip, checkable=checkable,
                                               checked=checked, toolbar=toolbar, menu=menu,
                                               visible=visible, shortcut=shortcut, enabled=enabled)
+        return self._actions[short_name]
 
     def add_widget(self, short_name, klass: Union[str, QtWidgets.QWidget, object], *args, tip='',
                    toolbar: QtWidgets.QToolBar = None, visible=True, signal_str=None,
@@ -338,6 +339,7 @@ class ActionManager:
             self._actions[short_name] = widget
         else:
             warnings.warn(UserWarning(f'Impossible to add the widget {short_name} and type {klass} to the toolbar'))
+        return widget
 
     def add_menu(self, short_name: str, title: str, menu: QtWidgets.QMenu = None,
                  icon_name: Union[str, Path, QtGui.QIcon] = '', auto_menu=True) -> QtWidgets.QMenu:
