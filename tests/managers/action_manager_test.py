@@ -209,6 +209,36 @@ def test_add_action_invalid_submenu_type(qtbot):
         action_manager.add_action('test', 'Test Action', submenu=123)
 
 
+def test_shared_submenu(qtbot):
+    """Test that the same submenu can be added to multiple parent menus"""
+    menu = QtWidgets.QMenu()
+    action_manager = ActionManager(toolbar=QtWidgets.QToolBar(), menu=menu)
+
+    # Create two parent menus
+    file_menu = action_manager.add_submenu('file', 'File')
+    view_menu = action_manager.add_submenu('view', 'View')
+
+    # Create a shared submenu (add to file menu first)
+    shared_submenu = action_manager.add_submenu('recent', 'Recent Files', menu=file_menu)
+
+    # Add the same submenu to view menu
+    view_menu.addMenu(shared_submenu)
+
+    # Verify it appears in both menus
+    file_submenus = [action.menu() for action in file_menu.actions() if action.menu() is not None]
+    view_submenus = [action.menu() for action in view_menu.actions() if action.menu() is not None]
+
+    assert shared_submenu in file_submenus
+    assert shared_submenu in view_submenus
+
+    # Add action to shared submenu
+    action_manager.add_action('recent_1', 'Project1.py', submenu=shared_submenu)
+
+    # Verify action appears in the shared submenu (accessible from both parent menus)
+    assert len(shared_submenu.actions()) == 1
+    assert action_manager.get_action('recent_1') in shared_submenu.actions()
+
+
 def test_action_path_simple(qtbot):
     """Test getting path for action in simple submenu"""
     menu = QtWidgets.QMenu()

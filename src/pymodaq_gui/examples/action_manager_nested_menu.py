@@ -38,6 +38,8 @@ class NestedMenuExample(QtWidgets.QMainWindow, ActionManager):
             "<li><b>Action paths</b> - See full menu path when clicking actions</li>"
             "<li><b>Icons</b> - Both menus and actions can have icons</li>"
             "<li><b>Flexible organization</b> - Group related actions logically</li>"
+            "<li><b>Shared submenus</b> - 'Recent Files' appears in both File and Edit menus</li>"
+            "<li><b>Shared actions</b> - 'Save' appears in File and Tools menus</li>"
             "</ul>"
             "<p>Try clicking any menu item to see its full path!</p>"
         )
@@ -176,6 +178,21 @@ class NestedMenuExample(QtWidgets.QMainWindow, ActionManager):
         help_menu = self.add_submenu('help', 'Help')
         self.add_action('docs', 'Documentation', submenu='help')
         self.add_action('about', 'About', submenu='help')
+
+        # ========== Demonstration of Shared Submenus ==========
+        # You can add the same submenu to multiple parent menus!
+        # Let's add the "Recent Files" submenu to the Edit menu as well
+        edit_menu_obj = self.get_submenu('edit')
+        recent_menu_obj = self.get_submenu('recent')
+        edit_menu_obj.addMenu(recent_menu_obj)
+        # Now "Recent Files" appears in both File and Edit menus,
+        # but it's the same submenu instance - changes appear everywhere!
+
+        # ========== Demonstration of Shared Actions ==========
+        # The 'save' action can be added to multiple menus/toolbars
+        tools_menu_obj = self.get_submenu('tools')
+        self.affect_to('save', tools_menu_obj)
+        # Now "Save" appears in File and Tools menus
 
         # Connect all actions to the same handler that shows the path
         for action_name in self.actions_names:
