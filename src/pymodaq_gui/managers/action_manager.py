@@ -1,14 +1,12 @@
 import warnings
-from typing import Iterable as IterableType
 from collections.abc import Iterable
-from pymodaq_utils.warnings import deprecation_msg
-from multipledispatch import dispatch
-from typing import Union, Callable, List
-
-from qtpy import QtGui, QtWidgets, QtCore
-from qtpy.QtWidgets import QAction
-
 from pathlib import Path
+from typing import Callable, Iterable as IterableType, Union
+
+from multipledispatch import dispatch
+from pymodaq_utils.warnings import deprecation_msg
+from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtWidgets import QAction as QtQAction
 
 here = Path(__file__).parent
 icon_folder = here.parent.joinpath('QtDesigner_Ressources/Icon_Library/')
@@ -17,7 +15,7 @@ QtCore.QDir.addSearchPath('icons', str(icon_folder))
 def create_icon(icon_name: Union[str, Path]):
     icon = QtGui.QIcon()
     if Path(icon_name).is_file(): # Test if icon is in path
-        icon.addPixmap(QtGui.QPixmap(icon_name), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(icon_name), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
     else:
         pixmap = QtGui.QPixmap(f"icons:{icon_name}.png") # Test if icon is in pymodaq's library
         if pixmap.isNull(): 
@@ -28,11 +26,11 @@ def create_icon(icon_name: Union[str, Path]):
                 icon = QtWidgets.QWidget().style().standardIcon(pixmapi)
         else:
             icon = QtGui.QIcon()
-            icon.addPixmap(QtGui.QPixmap(pixmap), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            icon.addPixmap(QtGui.QPixmap(pixmap), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
     return icon
 
 
-class QAction(QAction):
+class QAction(QtQAction):
     """
     QAction subclass to mimic signals as pushbuttons. Done to be sure of backcompatibility
     when I moved from pushbuttons to QAction
@@ -405,7 +403,7 @@ class ActionManager:
         self.get_action(action_name).setText(text)
 
     @property
-    def actions(self) -> List[QAction]:
+    def actions(self) -> list[QAction]:
         return list(self._actions.values())
 
     @property
@@ -460,7 +458,7 @@ class ActionManager:
         path_parts = []
 
         # Find which menu(s) contain this action
-        def find_action_in_menu(menu: QtWidgets.QMenu, action: QAction) -> List[str]:
+        def find_action_in_menu(menu: QtWidgets.QMenu, action: QAction) -> list[str]:
             """Recursively search for action in menu hierarchy"""
             if menu is None:
                 return []
@@ -540,7 +538,7 @@ class ActionManager:
         return submenu_name in self._submenus
 
     @property
-    def submenus(self) -> List[QtWidgets.QMenu]:
+    def submenus(self) -> list[QtWidgets.QMenu]:
         """Get all submenus"""
         return list(self._submenus.values())
 
