@@ -76,7 +76,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
             else:  # cancel
                 pass
 
-    def make_config(self):
+    def make_config(self) -> list:
         """
         Create additional configuration parameters.
 
@@ -194,7 +194,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         self.config_deleted.connect(self._populate_load_menu)
     # ============ End Action Management ============
 
-    def set_new_config(self, file: str = None, show=True):
+    def set_new_config(self, file: str = None, show: bool = True) -> None:
         """
         Create a new configuration with default parameters.
 
@@ -223,7 +223,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         if show:
             self.show_config()
 
-    def set_config_from_file(self, file_path: Path, show=True):
+    def set_config_from_file(self, file_path: Path, show: bool = True) -> bool:
         """
         Load an existing configuration from an XML file.
 
@@ -248,7 +248,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         if file_path.suffix == ".xml":
             children = ioxml.XML_file_to_parameter(file_path)
         else:
-            logger.exception("file_path must be of xml type")
+            logger.error("file_path must be of xml type")
             return False
 
         self.settings = Parameter.create(
@@ -276,7 +276,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
 
         return True
 
-    def show_config(self, widget=None, overwrite=False):
+    def show_config(self, widget: QtWidgets.QWidget = None, overwrite: bool = False) -> bool:
         """
         Display the configuration dialog for viewing and editing settings.
 
@@ -328,7 +328,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         else:
             return False
     
-    def save_config(self, overwrite=False):
+    def save_config(self, overwrite: bool = False) -> bool:
         """
         Save the current configuration to an XML file.
 
@@ -472,11 +472,11 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
 
         return self._menu
 
-    def _menu_new_config(self):
+    def _menu_new_config(self) -> None:
         """Menu action: Create a new configuration"""
         self.set_new_config(show=True)
 
-    def _menu_edit_current_config(self):
+    def _menu_edit_current_config(self) -> None:
         """Menu action: Edit the currently loaded configuration"""
         if not hasattr(self, 'settings') or self.settings is None:
             logger.warning("No configuration loaded to edit")
@@ -492,7 +492,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         if success:
             logger.info(f"Configuration '{self.settings.child('filename').value()}' updated")
 
-    def _menu_duplicate_config(self):
+    def _menu_duplicate_config(self) -> None:
         """Menu action: Duplicate current configuration with a new name"""
         if not hasattr(self, 'settings') or self.settings is None:
             logger.warning("No configuration loaded to duplicate")
@@ -527,7 +527,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                 # Restore original filename if user cancelled
                 self.settings.child("filename").setValue(old_filename)
 
-    def _menu_delete_config(self):
+    def _menu_delete_config(self) -> None:
         """Menu action: Delete a configuration file after confirmation"""
         # Get list of available configs
         config_files = self._get_config_files()
@@ -560,7 +560,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
             message=f"Are you sure you want to delete '{file_name}.xml'?\n\nThis action cannot be undone."
         )
 
-        if confirm:            
+        if confirm:
             file_to_delete = self.config_path.joinpath(f"{file_name}.xml")
             try:
                 file_to_delete.unlink()
@@ -579,12 +579,12 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                     f"Failed to delete configuration:\n{str(e)}"
                 )
 
-    def _menu_refresh_list(self):
+    def _menu_refresh_list(self) -> None:
         """Menu action: Refresh the Load submenu"""
         self._populate_load_menu()
         logger.info("Configuration list refreshed")
 
-    def _menu_open_config_dir(self):
+    def _menu_open_config_dir(self) -> None:
         """Menu action: Open configuration directory in file explorer"""
         if not self.config_path or not isinstance(self.config_path, Path):
             QMessageBox.warning(
@@ -634,7 +634,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                 f"Error opening directory:\n{str(e)}"
             )
 
-    def _populate_load_menu(self):
+    def _populate_load_menu(self) -> None:
         """Populate the Load submenu with available configuration files"""
         if not hasattr(self, '_load_submenu'):
             return
@@ -659,7 +659,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                 lambda checked=False, path=config_file: self._menu_load_config(path)
             )
 
-    def _menu_load_config(self, file_path: Path):
+    def _menu_load_config(self, file_path: Path) -> None:
         """
         Menu action: Load a specific configuration file
 
