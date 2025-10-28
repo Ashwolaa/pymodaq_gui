@@ -287,7 +287,8 @@ class ActionManager:
             elif isinstance(toolbar, str):
                 toolbar = self.get_toolbar(toolbar)
             elif not isinstance(toolbar, QtWidgets.QToolBar):
-                raise TypeError(f'toolbar must be either None, a string, or QToolBar, got {type(menu)}')                
+                raise TypeError(f'toolbar must be either None, a string, or QToolBar, got {type(toolbar)}')
+
         if auto_menu:
             if menu is None:
                 menu = self._menu
@@ -301,8 +302,8 @@ class ActionManager:
         return self._actions[short_name]
 
     def add_widget(self, short_name, klass: Union[str, QtWidgets.QWidget, object], *args, tip='',
-                   toolbar: QtWidgets.QToolBar = None, visible=True, signal_str=None,
-                   slot: Callable=None, enabled=True, **kwargs):
+                   toolbar: Union[str, QtWidgets.QToolBar] = None, visible=True, signal_str=None,
+                   slot: Callable=None, enabled=True, auto_toolbar=True, **kwargs):
         """Create and add a widget to a toolbar
 
         Parameters
@@ -325,16 +326,25 @@ class ActionManager:
             a callable connected to the signal
         enabled: bool
             enable state of the widget
+        auto_toolbar: bool
+            if True add this action to the defined toolbar
         kwargs: dict
             variable named arguments passed as is to the widget constructor
         Returns
         -------
         QtWidgets.QWidget
         """
-        if toolbar is None:
-            toolbar = self._toolbar
+        if auto_toolbar:
+            if toolbar is None:
+                toolbar = self._toolbar
+            elif isinstance(toolbar, str):
+                toolbar = self.get_toolbar(toolbar)
+            elif not isinstance(toolbar, QtWidgets.QToolBar):
+                raise TypeError(f'toolbar must be either None, a string, or QToolBar, got {type(toolbar)}')
+
         widget = addwidget(klass, *args, tip=tip, toolbar=toolbar, visible=visible, signal_str=signal_str,
                            slot=slot, enabled=enabled, **kwargs)
+
         if widget is not None:
             self._actions[short_name] = widget
         else:
@@ -456,7 +466,7 @@ class ActionManager:
     def actions_names(self) -> list[str]:
         return list(self._actions.keys())
 
-    def get_action(self, name) -> QAction:
+    def get_action(self, name) -> Union[QAction, QtWidgets.QWidget]:
         """Getter of a given action
 
         Parameters
