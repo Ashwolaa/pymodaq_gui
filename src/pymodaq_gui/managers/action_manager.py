@@ -21,6 +21,9 @@ def create_icon(icon_name: Union[str, Path]):
         if pixmap.isNull(): 
             if hasattr(QtGui.QIcon,'ThemeIcon') and hasattr(QtGui.QIcon.ThemeIcon, icon_name): # Test if icon is in Qt's library
                 icon = QtGui.QIcon.fromTheme(getattr(QtGui.QIcon.ThemeIcon, icon_name))
+            elif hasattr(QtWidgets.QStyle.StandardPixmap, icon_name):
+                pixmapi = getattr(QtWidgets.QStyle.StandardPixmap, icon_name)
+                icon = QtWidgets.QWidget().style().standardIcon(pixmapi)
         else:
             icon = QtGui.QIcon()
             icon.addPixmap(QtGui.QPixmap(pixmap), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)

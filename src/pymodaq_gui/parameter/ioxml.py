@@ -195,6 +195,10 @@ def dict_from_param(param):
         label = str(param.opts['label'])
         opts.update(dict(label=label))
 
+    if 'suffix' in param.opts:
+        suffix = str(param.opts['suffix'])
+        opts.update(dict(suffix=suffix))
+
     if 'show_pb' in param.opts:
         if param.opts['show_pb']:
             show_pb = '1'
@@ -283,6 +287,10 @@ def elt_to_dict(el):
     if 'label' in el.attrib.keys():
         label = str(el.get('label'))
         param.update(dict(label=label))
+
+    if 'suffix' in el.attrib.keys():
+        suffix = str(el.get('suffix'))
+        param.update(dict(suffix=suffix))
 
     # if 'limits' in el.attrib.keys():
     #     try:

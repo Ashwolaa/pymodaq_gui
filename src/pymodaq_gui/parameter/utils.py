@@ -35,6 +35,10 @@ class ParameterWithPath(SerializableBase):
     def __repr__(self):
         return f'Parameter {self.parameter.name()} with path {self.path}'
 
+    def __eq__(self, other: 'ParameterWithPath'):
+        return (self.path == other.path and
+                compareParameters(self.parameter, other.parameter))
+
     @property
     def parameter(self) -> Parameter:
         return self._parameter
@@ -145,7 +149,7 @@ def getValues(param:Parameter,) -> OrderedDict:
     return param.getValues()
 
 
-def compareParameters(param1:Parameter, param2:Parameter, opts: list = [])-> bool:
+def compareParameters(param1:Parameter, param2:Parameter, opts: list = None)-> bool:
     """Compare the structure and the opts of two parameters with their children,
      return True if structure and all opts are identical
         Parameters
@@ -156,10 +160,13 @@ def compareParameters(param1:Parameter, param2:Parameter, opts: list = [])-> boo
         Returns
         -------
         Bool    
-    """    
-    return getOpts(param1) == getOpts(param2) 
+    """
+    if opts is None:
+        opts = []
+    return getOpts(param1) == getOpts(param2)
+
     
-def compareStructureParameter(param1:Parameter,param2:Parameter,)-> bool:  
+def compareStructureParameter(param1:Parameter, param2: Parameter,)-> bool:
     """Compare the structure of two parameters with their children, return True if structure is identical
         Parameters
         ----------
@@ -172,7 +179,8 @@ def compareStructureParameter(param1:Parameter,param2:Parameter,)-> bool:
     """    
     return getStruct(param1) == getStruct(param2)
 
-def compareValuesParameter(param1:Parameter,param2:Parameter,)-> bool:  
+
+def compareValuesParameter(param1:Parameter, param2: Parameter,)-> bool:
     """Compare the structure and the values of two parameters with their children, return True if structures and values are identical
         Parameters
         ----------
@@ -185,7 +193,8 @@ def compareValuesParameter(param1:Parameter,param2:Parameter,)-> bool:
     """    
     return getValues(param1) == getValues(param2)    
 
-def iter_children(param, childlist=[], filter_type=(), filter_name=(), select_filter=False)-> list:
+
+def iter_children(param, childlist: list = [], filter_type=(), filter_name=(), select_filter=False)-> list:
 
 
     """
@@ -196,10 +205,12 @@ def iter_children(param, childlist=[], filter_type=(), filter_name=(), select_fi
     list
         The list of the children name from the given node.       
     """
-    return iter_children_params(param, childlist=childlist, output_type='name', filter_type=(), filter_name=(), select_filter=False)
+    return iter_children_params(param, childlist=childlist, output_type='name',
+                                filter_type=(), filter_name=(), select_filter=False)
 
 
-def iter_children_params(param, childlist=[], output_type=None, filter_type=(), filter_name=(), select_filter=False)-> list:
+def iter_children_params(param, childlist: list = [], output_type=None,
+                         filter_type=(), filter_name=(), select_filter=False)-> list:
     """
     Get a list of parameters under a given Parameter.
 
@@ -224,7 +235,6 @@ def iter_children_params(param, childlist=[], output_type=None, filter_type=(), 
     list
         The list of the children from the given node.    
     """
-
     for child in param.children():
         # XNOR Gate        
         is_filtered = child.type() in filter_type or child.name() in filter_name
@@ -244,7 +254,7 @@ def iter_children_params(param, childlist=[], output_type=None, filter_type=(), 
     return childlist
 
 
-def get_param_from_name(parent, name) -> Parameter:
+def get_param_from_name(parent: Parameter, name) -> Parameter:
     """Get Parameter under parent whose name is name
 
     Parameters
