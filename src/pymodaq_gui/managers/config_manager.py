@@ -80,18 +80,20 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
     title = "Config"
     name = "config"
 
-    def __init__(self, config_path: Path = "", msgbox=False):
+    def __init__(self, config_path: Optional[Path] = None, msgbox=False):
         """
         Initialize the ConfigManager.
 
         Args:
-            config_path (Path, optional): Path to the configuration directory. Defaults to ''.
+            config_path (Path, optional): Path to the configuration directory. Defaults to None.
             msgbox (bool, optional): If True, shows a dialog box on initialization asking
                 whether to create a new config or modify an existing one. Defaults to False.
         """
         ParameterManager.__init__(self, settings_name=self.name)
-        ActionManager.__init__(self)
         QtCore.QObject.__init__(self)
+        # Convert to Path if needed and ensure consistency
+        if config_path is not None and not isinstance(config_path, Path):
+            config_path = Path(config_path)
         self.config_path = config_path
         self._actions_setup = False  # Track if actions have been initialized
         if msgbox:
@@ -392,7 +394,12 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
 
         # Restore settings_tree to original parent before dialog is destroyed
         if original_parent is not None:
-            original_parent.layout().addWidget(self.settings_tree)
+            parent_layout = original_parent.layout()
+            if parent_layout is not None:
+                parent_layout.addWidget(self.settings_tree)
+            else:
+                # Parent has no layout, just reparent the widget
+                self.settings_tree.setParent(original_parent)
         else:
             # Remove from dialog layout to prevent deletion
             vlayout.removeWidget(self.settings_tree)
