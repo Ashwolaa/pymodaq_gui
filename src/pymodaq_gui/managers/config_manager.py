@@ -12,9 +12,36 @@ from pymodaq_gui.managers.action_manager import ActionManager
 from pymodaq_gui.parameter import ioxml, Parameter
 from pymodaq_gui.utils import select_file
 from pymodaq_gui.messenger import dialog as dialogbox
-import qtawesome as qta
+
 
 logger = set_logger(get_module_name(__file__))
+
+# Try to import qtawesome, fall back to Qt standard icons if not available
+try:
+    import qtawesome as qta
+    HAS_QTAWESOME = True
+except ImportError:
+    HAS_QTAWESOME = False
+    logger.warning("qtawesome not available, using Qt standard icons as fallback")
+
+
+
+def get_icon(qta_icon_name: str, fallback_name: str):
+    """Get icon from qtawesome if available, otherwise use fallback from Qt or pymodaq library.
+
+    Args:
+        qta_icon_name: qtawesome icon name (e.g., 'ei.file-new')
+        fallback_name: Fallback icon name for ActionManager's create_icon:
+            - String name from pymodaq's icon library (e.g., 'NewFile', 'Folder')
+            - Qt ThemeIcon enum name (e.g., 'DocumentNew')
+            - Qt StandardPixmap name (e.g., 'SP_FileIcon')
+
+    Returns:
+        QIcon if qtawesome is available, or string for ActionManager to handle
+    """
+    if HAS_QTAWESOME:
+        return qta.icon(qta_icon_name)
+    return fallback_name
 
 
 class ConfigManager(ParameterManager, ActionManager, QObject):
@@ -24,6 +51,10 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
     Provides functionality to create, load, modify, and save configuration
     files in XML format with a graphical user interface.
 
+    Actions (new, edit, duplicate, refresh, open_dir) are initialized automatically
+    when create_menu() is first called. This lazy initialization approach ensures
+    all action setup happens in one place.
+
     Attributes:
         title (str): Display title for the configuration manager
         name (str): Internal name for the configuration manager
@@ -32,6 +63,13 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
     Signals:
         config_loaded (Path): Emitted when a configuration file is loaded
         config_saved (Path): Emitted when a configuration file is saved
+        config_deleted (Path): Emitted when a configuration file is deleted
+
+    Example:
+        >>> manager = ConfigManager(config_path=Path("./configs"))
+        >>> menu = manager.create_menu()  # Initializes actions and creates menu
+        >>> manager.set_new_config(file="my_config", show=False)
+        >>> manager.save_config(overwrite=True)
     """
 
     # Signals
@@ -55,7 +93,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         ActionManager.__init__(self)
         QtCore.QObject.__init__(self)
         self.config_path = config_path
-        self.setup_actions()
+        self._actions_setup = False  # Track if actions have been initialized
         if msgbox:
             msgBox = QMessageBox()
             msgBox.setText(f"{self.title} Manager")
@@ -130,50 +168,78 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
 
     # ============ Action Management ============
 
-    def setup_actions(self):
+    def _setup_actions(self):
         """
-        Setup standard configuration actions using ActionManager.
+        Internal method to setup standard configuration actions and menus.
 
-        Creates the following actions:
+        This method is called automatically by create_menu() to ensure all actions
+        and menus are initialized. It creates:
+
+        Actions:
         - 'new': Create a new configuration
         - 'edit': Edit the currently loaded configuration
         - 'duplicate': Duplicate current config with a new name
-        - 'delete': Delete a configuration file
-        - 'refresh': Refresh the load menu
+        - 'refresh': Refresh the configuration list
         - 'open_dir': Open the configuration directory
 
-        Subclasses can override to add custom actions.
+        Menus:
+        - 'load_menu': Submenu for loading configurations
+        - 'delete_menu': Submenu for deleting configurations
+
+        Note:
+            This method is called automatically and should not typically be
+            called directly. Subclasses can override to add custom actions/menus,
+            but should call super()._setup_actions() first.
         """
+        if self._actions_setup:
+            return  # Already initialized
+
+        self._actions_setup = True
 
         self.add_action(
             "new",
             f"New {self.title}...",
-            icon_name=qta.icon("ei.file-new"),
+            icon_name=get_icon("ei.file-new", "NewFile"),
             tip=f"Create a new {self.title} configuration",
         )
         self.add_action(
             "edit",
             f"Edit Current {self.title}...",
-            icon_name=qta.icon("ei.file-edit"),
+            icon_name=get_icon("ei.file-edit", "editFile"),
             tip="Edit the currently loaded configuration",
         )
         self.add_action(
             "duplicate",
             f"Duplicate {self.title}...",
-            icon_name=qta.icon("fa5.copy"),
+            icon_name=get_icon("fa5.copy", "SP_FileDialogContentsView"),
             tip="Duplicate configuration with a new name",
         )
         self.add_action(
             "refresh",
             "Refresh List",
-            icon_name=qta.icon("ei.refresh"),
+            icon_name=get_icon("ei.refresh", "SP_BrowserReload"),
             tip="Refresh the configuration list",
         )
         self.add_action(
             "open_dir",
             "Open Config Directory",
-            icon_name=qta.icon("mdi.folder-open"),
+            icon_name=get_icon("mdi.folder-open", "SP_DirOpenIcon"),
             tip="Open configuration directory in file explorer",
+        )
+
+        # Create load and delete submenus (always created, conditionally added to parent menu)
+        self._load_menu = self.add_menu(
+            'load_menu',
+            f"Load {self.title}",
+            icon_name=get_icon('mdi.folder-open', 'SP_DirLinkIcon'),
+            auto_menu=False  # Don't auto-add to any menu yet
+        )
+
+        self._delete_menu = self.add_menu(
+            'delete_menu',
+            f"Delete {self.title}",
+            icon_name=get_icon('mdi.delete', 'SP_TrashIcon'),
+            auto_menu=False  # Don't auto-add to any menu yet
         )
 
         # Connect actions to methods
@@ -183,8 +249,24 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         self.connect_action('refresh', self._menu_refresh_list)
         self.connect_action('open_dir', self._menu_open_config_dir)
 
+        # Connect signals to repopulate dynamic menus
         self.config_saved.connect(self._populate_menus)
         self.config_deleted.connect(self._populate_menus)
+
+    def setup_actions(self):
+        """
+        Setup configuration actions (deprecated - called automatically).
+
+        .. deprecated:: 5.x
+            Actions are now initialized automatically when create_menu() is called.
+            This method is kept for backward compatibility but is no longer necessary.
+            Subclasses that override this method should instead override _setup_actions().
+
+        For backward compatibility, this method simply calls _setup_actions().
+        """
+        logger.info("setup_actions() is deprecated - actions are now initialized automatically by create_menu()")
+        self._setup_actions()
+
     # ============ End Action Management ============
 
     def set_new_config(self, file: str = None, show: bool = True) -> None:
@@ -370,14 +452,18 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
     def create_menu(self, menubar: Optional[QMenuBar] = None, menu_title: Optional[str] = None,
                     actions: Optional[List[str]] = None) -> QMenu:
         """
-        Create a menu with standard configuration actions using ActionManager's built-in menu.
+        Create a menu with standard configuration actions.
+
+        This method initializes all configuration actions (if not already done) and
+        organizes them into a menu structure. Actions are created only once on the
+        first call to this method.
 
         Available actions (default: all):
         - 'new': Create a new configuration from scratch
         - 'edit': Open dialog to modify the currently loaded configuration
         - 'duplicate': Create a copy of current config with a new name for editing
-        - 'load': menu with quick load from available configurations
-        - 'delete': menu with quick delete from available configurations
+        - 'load': Submenu with quick load from available configurations
+        - 'delete': Submenu with quick delete from available configurations
         - 'refresh': Refresh the available configuration list
         - 'open_dir': Open the configuration directory in file explorer
 
@@ -393,6 +479,10 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         Returns:
             QMenu: The menu object (ActionManager's self._menu or newly created)
 
+        Note:
+            This method automatically initializes actions on first call. After
+            initialization, actions can be accessed via `get_action('action_name')`.
+
         Examples:
             >>> # Full menu with all actions, added to menubar
             >>> menu = manager.create_menu(menubar)
@@ -403,6 +493,9 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
             >>> # Standalone menu (uses ActionManager's internal menu)
             >>> menu = manager.create_menu()  # Returns self._menu
         """
+        # Initialize actions if not already done
+        self._setup_actions()
+
         if menu_title is None:
             menu_title = f"{self.title} Configs"
 
@@ -431,46 +524,18 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                 self.affect_to(action_name, self._menu)
                 has_creation_actions = True
 
-        # Separator before load menu
+        # Separator before load/delete menus
         if has_creation_actions and any(a in actions for a in ['load', 'delete', 'refresh', 'open_dir']):
             self._menu.addSeparator()
 
-        # Load menu - USE ActionManager's add_menu for consistency
+        # Add load menu if requested (menu was created in _setup_actions)
         if 'load' in actions:
-            # Check if menu already exists (in case create_menu is called multiple times)
-            if self.has_menu('load_menu'):
-                # Reuse existing menu
-                self._load_menu = self.get_menu('load_menu')
-                # Add to current menu
-                self._menu.addMenu(self._load_menu)
-            else:
-                # Create new menu
-                self._load_menu = self.add_menu(
-                    'load_menu',
-                    f"Load {self.title}",
-                    menu=self._menu,
-                    icon_name=qta.icon('mdi.folder-open'),
-                    auto_menu=False  # We explicitly pass the parent menu
-                )
+            self._menu.addMenu(self._load_menu)
             has_file_actions = True
 
-        # Delete menu - USE ActionManager's add_menu for consistency
+        # Add delete menu if requested (menu was created in _setup_actions)
         if 'delete' in actions:
-            # Check if menu already exists (in case create_menu is called multiple times)
-            if self.has_menu('delete_menu'):
-                # Reuse existing menu
-                self._delete_menu = self.get_menu('delete_menu')
-                # Add to current menu
-                self._menu.addMenu(self._delete_menu)
-            else:
-                # Create new menu
-                self._delete_menu = self.add_menu(
-                    'delete_menu',
-                    f"Delete {self.title}",
-                    menu=self._menu,
-                    icon_name=qta.icon('mdi.delete'),
-                    auto_menu=False  # We explicitly pass the parent menu
-                )
+            self._menu.addMenu(self._delete_menu)
             has_file_actions = True
 
         # Separator before management actions
