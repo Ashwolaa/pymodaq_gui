@@ -72,6 +72,7 @@ class TestConfigManager:
 
     def test_actions_setup(self, config_manager:ConfigManager):
         """Test that standard actions are created"""
+        config_manager.create_menu()
         assert config_manager.has_action('new')
         assert config_manager.has_action('edit')
         assert config_manager.has_action('duplicate')
