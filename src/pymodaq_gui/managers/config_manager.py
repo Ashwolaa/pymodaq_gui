@@ -342,9 +342,10 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
             The file is saved with a .xml extension in the config_path directory.
         """
         filename = self.settings.child("filename").value()       
+        file_path = self.config_path.joinpath(filename)
         saved = False
         try:
-            ioxml.parameter_to_xml_file(self.settings, self.config_path.joinpath(filename), overwrite=overwrite)
+            ioxml.parameter_to_xml_file(self.settings, file_path, overwrite=overwrite)
             saved = True
         except FileExistsError as currenterror:
             logger.warning(f"{currenterror} File {filename}.xml exists")
@@ -353,14 +354,15 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
                 message="File exist do you want to overwrite it ?",
             )
             if user_agreed:
-                ioxml.parameter_to_xml_file(self.settings, self.config_path.joinpath(filename))
+                ioxml.parameter_to_xml_file(self.settings, file_path, overwrite=True)
                 logger.warning(f"File {filename}.xml overwriten at user request")
                 saved = True
             else:
                 logger.warning(f"File {filename}.xml wasn't saved at user request")
+                saved = False
 
         if saved:
-            self.config_saved.emit(self.config_path.joinpath(filename))
+            self.config_saved.emit(file_path.with_suffix('.xml'))
         return saved
 
     # ============ Menu Management Methods ============
@@ -489,7 +491,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
 
     def _menu_edit_current_config(self) -> None:
         """Menu action: Edit the currently loaded configuration"""
-        if not hasattr(self, 'settings') or self.settings is None:
+        if not hasattr(self, '_settings') or self._settings is None:
             logger.warning("No configuration loaded to edit")
             QMessageBox.warning(
                 None,
@@ -505,7 +507,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
 
     def _menu_duplicate_config(self) -> None:
         """Menu action: Duplicate current configuration with a new name"""
-        if not hasattr(self, 'settings') or self.settings is None:
+        if not hasattr(self, '_settings') or self._settings is None:
             logger.warning("No configuration loaded to duplicate")
             QMessageBox.warning(
                 None,
