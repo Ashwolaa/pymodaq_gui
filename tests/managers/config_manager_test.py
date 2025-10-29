@@ -57,7 +57,7 @@ class TestConfigManager:
     def test_initialization_with_path_conversion(self, qtbot):
         """Test that string paths are properly handled"""
         manager = ConfigManager(config_path="/tmp/test", msgbox=False)
-        assert manager.config_path == "/tmp/test"
+        assert manager.config_path == Path("/tmp/test")
 
     def test_make_config_default(self, config_manager:ConfigManager):
         """Test that make_config returns empty list by default"""
@@ -73,11 +73,11 @@ class TestConfigManager:
     def test_actions_setup(self, config_manager:ConfigManager):
         """Test that standard actions are created"""
         config_manager.create_menu()
-        assert config_manager.has_action('new')
-        assert config_manager.has_action('edit')
-        assert config_manager.has_action('duplicate')
-        assert config_manager.has_action('refresh')
-        assert config_manager.has_action('open_dir')
+        assert config_manager.get_action('new')
+        assert config_manager.get_action('edit')
+        assert config_manager.get_action('duplicate')
+        assert config_manager.get_action('refresh')
+        assert config_manager.get_action('open_dir')
 
 
 class TestConfigCreation:

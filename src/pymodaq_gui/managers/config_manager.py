@@ -44,7 +44,7 @@ def get_icon(qta_icon_name: str, fallback_name: str):
     return fallback_name
 
 
-class ConfigManager(ParameterManager, ActionManager, QObject):
+class ConfigManager(ParameterManager, QObject):
     """
     Manager class for handling configuration files and parameters.
 
@@ -59,6 +59,7 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         title (str): Display title for the configuration manager
         name (str): Internal name for the configuration manager
         config_path (Path): Path to the directory containing config files
+        action_manager (ActionManager): Manager for handling menu actions
 
     Signals:
         config_loaded (Path): Emitted when a configuration file is loaded
@@ -95,6 +96,8 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         if config_path is not None and not isinstance(config_path, Path):
             config_path = Path(config_path)
         self.config_path = config_path
+        # Use composition instead of inheritance for ActionManager
+        self.action_manager = ActionManager()
         self._actions_setup = False  # Track if actions have been initialized
         if msgbox:
             msgBox = QMessageBox()
@@ -198,31 +201,31 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
 
         self._actions_setup = True
 
-        self.add_action(
+        self.action_manager.add_action(
             "new",
             f"New {self.title}...",
             icon_name=get_icon("ei.file-new", "NewFile"),
             tip=f"Create a new {self.title} configuration",
         )
-        self.add_action(
+        self.action_manager.add_action(
             "edit",
             f"Edit Current {self.title}...",
             icon_name=get_icon("ei.file-edit", "editFile"),
             tip="Edit the currently loaded configuration",
         )
-        self.add_action(
+        self.action_manager.add_action(
             "duplicate",
             f"Duplicate {self.title}...",
             icon_name=get_icon("fa5.copy", "SP_FileDialogContentsView"),
             tip="Duplicate configuration with a new name",
         )
-        self.add_action(
+        self.action_manager.add_action(
             "refresh",
             "Refresh List",
             icon_name=get_icon("ei.refresh", "SP_BrowserReload"),
             tip="Refresh the configuration list",
         )
-        self.add_action(
+        self.action_manager.add_action(
             "open_dir",
             "Open Config Directory",
             icon_name=get_icon("mdi.folder-open", "SP_DirOpenIcon"),
@@ -230,14 +233,14 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         )
 
         # Create load and delete submenus (always created, conditionally added to parent menu)
-        self._load_menu = self.add_menu(
+        self._load_menu = self.action_manager.add_menu(
             'load_menu',
             f"Load {self.title}",
             icon_name=get_icon('mdi.folder-open', 'SP_DirLinkIcon'),
             auto_menu=False  # Don't auto-add to any menu yet
         )
 
-        self._delete_menu = self.add_menu(
+        self._delete_menu = self.action_manager.add_menu(
             'delete_menu',
             f"Delete {self.title}",
             icon_name=get_icon('mdi.delete', 'SP_TrashIcon'),
@@ -245,33 +248,31 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         )
 
         # Connect actions to methods
-        self.connect_action('new', self._menu_new_config)
-        self.connect_action('edit', self._menu_edit_current_config)
-        self.connect_action('duplicate', self._menu_duplicate_config)
-        self.connect_action('refresh', self._menu_refresh_list)
-        self.connect_action('open_dir', self._menu_open_config_dir)
+        self.action_manager.connect_action('new', self._menu_new_config)
+        self.action_manager.connect_action('edit', self._menu_edit_current_config)
+        self.action_manager.connect_action('duplicate', self._menu_duplicate_config)
+        self.action_manager.connect_action('refresh', self._menu_refresh_list)
+        self.action_manager.connect_action('open_dir', self._menu_open_config_dir)
 
         # Connect signals to repopulate dynamic menus
         self.config_saved.connect(self._populate_menus)
         self.config_deleted.connect(self._populate_menus)
 
-    def setup_actions(self):
+    def get_action(self, action_name: str) -> Optional[QAction]:
         """
-        Setup configuration actions (deprecated - called automatically).
+        Get a specific action by name (convenience method).
 
-        .. deprecated:: 5.x
-            Actions are now initialized automatically when create_menu() is called.
-            This method is kept for backward compatibility but is no longer necessary.
-            Subclasses that override this method should instead override _setup_actions().
+        Args:
+            action_name: Name of the action to retrieve
 
-        For backward compatibility, this method simply calls _setup_actions().
+        Returns:
+            QAction if found, None otherwise
         """
-        logger.info("setup_actions() is deprecated - actions are now initialized automatically by create_menu()")
-        self._setup_actions()
+        return self.action_manager.get_action(action_name)    
 
     # ============ End Action Management ============
 
-    def set_new_config(self, file: str = None, show: bool = True) -> None:
+    def set_new_config(self, file: Optional[str] = None, show: bool = True) -> None:
         """
         Create a new configuration with default parameters.
 
@@ -343,7 +344,9 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
             QMessageBox.critical(
                 None,
                 "Invalid Configuration",
-                f"The configuration file '{file_path.name}' failed validation.\n"
+                f"The configuration file '{file_path.name}' failed validation.\n\n"
+                f"Please check the log for details about the validation errors.\n"
+                f"The configuration may be corrupted or incompatible with this version."
             )
             return False
 
@@ -513,13 +516,13 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         # Use ActionManager's menu or create new one for menubar
         if menubar is not None:
             # Create menu in the menubar
-            self.set_menu(menubar.addMenu(menu_title))
-        elif self._menu is None:
+            self.action_manager.set_menu(menubar.addMenu(menu_title))
+        elif self.action_manager._menu is None:
             # Create standalone menu
-            self.set_menu(QMenu(menu_title))
+            self.action_manager.set_menu(QMenu(menu_title))
         # Clear menu if it already has items
-        self._menu.clear()
-        self._menu.setTitle(menu_title)
+        self.action_manager._menu.clear()
+        self.action_manager._menu.setTitle(menu_title)
 
         # Track if we need separators
         has_creation_actions = False
@@ -528,34 +531,34 @@ class ConfigManager(ParameterManager, ActionManager, QObject):
         # Creation/Edit actions group - use ActionManager's affect_to
         for action_name in ['new', 'edit', 'duplicate']:
             if action_name in actions:
-                self.affect_to(action_name, self._menu)
+                self.action_manager.affect_to(action_name, self.action_manager._menu)
                 has_creation_actions = True
 
         # Separator before load/delete menus
         if has_creation_actions and any(a in actions for a in ['load', 'delete', 'refresh', 'open_dir']):
-            self._menu.addSeparator()
+            self.action_manager._menu.addSeparator()
 
         # Add load menu if requested (menu was created in _setup_actions)
         if 'load' in actions:
-            self._menu.addMenu(self._load_menu)
+            self.action_manager._menu.addMenu(self._load_menu)
             has_file_actions = True
 
         # Add delete menu if requested (menu was created in _setup_actions)
         if 'delete' in actions:
-            self._menu.addMenu(self._delete_menu)
+            self.action_manager._menu.addMenu(self._delete_menu)
             has_file_actions = True
 
         # Separator before management actions
         if has_file_actions and any(a in actions for a in ['refresh', 'open_dir']):
-            self._menu.addSeparator()
+            self.action_manager._menu.addSeparator()
 
         # File management actions
         for action_name in ['refresh', 'open_dir']:
             if action_name in actions:
-                self.affect_to(action_name, self._menu)
+                self.action_manager.affect_to(action_name, self.action_manager._menu)
 
         self._populate_menus()
-        return self._menu
+        return self.action_manager._menu
 
     def _menu_new_config(self) -> None:
         """Menu action: Create a new configuration"""
